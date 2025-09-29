@@ -96,10 +96,11 @@
     print-color-adjust: exact;
   }
 
-  .no-print {
+  .no-print,
+  .no-print * {
     display: none !important;
   }
-
+  
   .printable-area {
     width: 210mm;
     height: 297mm;
@@ -128,7 +129,15 @@
   .printable-area input,
   .printable-area textarea,
   .printable-area button,
-  .printable-area select {
+  .printable-area select,
+  .printable-area .flex.items-center.gap-1 > .flex-1,
+  .printable-area .flex.items-center.gap-1 > [role="combobox"],
+  .printable-area form > .flex,
+  .printable-area [role="combobox"],
+  .printable-area .items-end > button,
+  .printable-area .flex.items-center > button,
+  .printable-area .flex.items-center > .flex > button,
+  .printable-area .flex > .relative > button {
     display: none !important;
   }
 
