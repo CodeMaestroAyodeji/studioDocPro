@@ -124,7 +124,7 @@ export default function PaymentVoucherPreviewPage() {
           </header>
 
           {/* Body */}
-          <div className="space-y-4 mb-8">
+          <div className="space-y-4 mb-8 mt-12">
              <div className="grid grid-cols-3 gap-1 py-1">
                 <span className="font-semibold text-muted-foreground">Being Payment to:</span>
                 <span className="col-span-2 font-bold text-lg">{voucher.payeeName}</span>
