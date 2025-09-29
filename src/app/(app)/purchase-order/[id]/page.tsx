@@ -37,7 +37,7 @@ export default function PurchaseOrderPreviewPage() {
         setPo({
           ...parsed,
           date: new Date(parsed.date),
-          items: parsed.items.map(item => ({...item, grossUp: item.grossUp || false}))
+          items: parsed.items.map(item => ({...item, applyTax: item.applyTax || false}))
         });
       } else {
         toast({
@@ -80,21 +80,20 @@ export default function PurchaseOrderPreviewPage() {
   const calculateTotals = () => {
     if (!po) return { subtotal: 0, totalTax: 0, grandTotal: 0 };
     
-    const preTaxSubtotal = po.items.reduce((acc, item) => {
-        return acc + (item.quantity || 0) * (item.unitPrice || 0);
-    }, 0);
+    let subtotal = 0;
+    let totalTax = 0;
 
-    const totalTax = po.items.reduce((acc, item) => {
+    po.items.forEach(item => {
+        const itemTotal = (item.quantity || 0) * (item.unitPrice || 0);
+        subtotal += itemTotal;
         if (item.applyTax) {
-            return acc + (item.quantity || 0) * (item.unitPrice || 0) * (DEFAULT_TAX_RATE / 100);
+            totalTax += itemTotal * (DEFAULT_TAX_RATE / 100);
         }
-        return acc;
-    }, 0);
+    });
     
-    const subtotalWithTax = preTaxSubtotal + totalTax;
-    const grandTotal = preTaxSubtotal;
+    const grandTotal = subtotal;
 
-    return { subtotal: subtotalWithTax, totalTax, grandTotal };
+    return { subtotal: subtotal + totalTax, totalTax, grandTotal };
   };
 
   const { subtotal, totalTax, grandTotal } = calculateTotals();
@@ -205,12 +204,16 @@ export default function PurchaseOrderPreviewPage() {
               
               <footer className="space-y-4">
                  <div className="grid grid-cols-2 gap-8 pt-8">
-                    <div className="pt-8 border-t border-dashed">
-                        <p className="font-semibold">{signatory1?.name}</p>
+                    <div className="text-center">
+                        <div className="h-12"></div>
+                        <div className="border-b border-foreground w-3/4 mx-auto"></div>
+                        <p className="font-semibold mt-2">{signatory1?.name}</p>
                         <p className="text-sm text-muted-foreground">{signatory1?.title}</p>
                     </div>
-                    <div className="pt-8 border-t border-dashed">
-                        <p className="font-semibold">{signatory2?.name}</p>
+                    <div className="text-center">
+                        <div className="h-12"></div>
+                        <div className="border-b border-foreground w-3/4 mx-auto"></div>
+                        <p className="font-semibold mt-2">{signatory2?.name}</p>
                         <p className="text-sm text-muted-foreground">{signatory2?.title}</p>
                     </div>
                  </div>
