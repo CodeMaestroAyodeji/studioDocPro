@@ -14,6 +14,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { numberToWords } from '@/lib/number-to-words';
 import type { PaymentVoucher } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
 
