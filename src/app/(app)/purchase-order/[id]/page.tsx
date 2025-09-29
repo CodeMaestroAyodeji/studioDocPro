@@ -77,12 +77,16 @@ export default function PurchaseOrderPreviewPage() {
   const signatory1 = companyProfile.signatories.find(s => s.id === po.signatory1);
   const signatory2 = companyProfile.signatories.find(s => s.id === po.signatory2);
   
+  const getDisplayUnitPrice = (item: PurchaseOrder['items'][0]) => {
+    if (item.applyTax) {
+      return item.unitPrice * (1 + DEFAULT_TAX_RATE / 100);
+    }
+    return item.unitPrice;
+  }
+
   const getItemAmount = (item: PurchaseOrder['items'][0]) => {
-      const baseAmount = (item.quantity || 0) * (item.unitPrice || 0);
-      if (item.applyTax) {
-          return baseAmount * (1 + DEFAULT_TAX_RATE / 100);
-      }
-      return baseAmount;
+      const displayUnitPrice = getDisplayUnitPrice(item);
+      return (item.quantity || 0) * displayUnitPrice;
   }
 
   const calculateTotals = () => {
@@ -174,7 +178,7 @@ export default function PurchaseOrderPreviewPage() {
                       <TableRow key={item.id}>
                         <TableCell>{item.description}</TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(getDisplayUnitPrice(item))}</TableCell>
                         <TableCell className="text-center">{item.applyTax ? 'Yes' : 'No'}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(getItemAmount(item))}
@@ -229,4 +233,3 @@ export default function PurchaseOrderPreviewPage() {
     </div>
   );
 }
-
