@@ -23,6 +23,8 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { AISuggestionButton } from '@/components/ai-suggestion-button';
+import { getNextVoucherNumber } from '@/lib/voucher-sequence';
+import { numberToWords } from '@/lib/number-to-words';
 
 const voucherSchema = z.object({
   voucherNumber: z.string(),
@@ -36,23 +38,14 @@ const voucherSchema = z.object({
   approvedBy: z.string().min(1, "Please select who approved the voucher"),
 });
 
-// A library for converting number to words is needed, but to avoid adding dependencies, we'll use a simple placeholder.
-function numberToWords(num: number): string {
-    if (num === 0) return 'Zero';
-    if (!num) return '';
-    // This is a simplified version. A real app would use a library.
-    return `${num.toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })} only`;
-}
-
 export default function PaymentVoucherPage() {
   const { state: companyProfile } = useCompanyProfile();
   const { toast } = useToast();
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
   const [voucherNumber, setVoucherNumber] = useState('');
-
+  
   useEffect(() => {
-    const randomVoucher = `PV-${Math.floor(1000 + Math.random() * 9000)}`;
-    setVoucherNumber(randomVoucher);
+    setVoucherNumber(getNextVoucherNumber());
   }, []);
 
   const form = useForm<z.infer<typeof voucherSchema>>({
@@ -75,16 +68,21 @@ export default function PaymentVoucherPage() {
       form.setValue('voucherNumber', voucherNumber);
     }
   }, [voucherNumber, form]);
+  
+  const watchedDate = form.watch('date');
+  const formattedDate = watchedDate ? format(watchedDate, 'dd/MM/yyyy') : '';
 
   const amountInWords = numberToWords(form.watch('amount'));
 
   const handleSubmit = (values: z.infer<typeof voucherSchema>) => {
-     // In a real app, this would save the voucher.
+     // In a real app, this would save the voucher and increment the sequence.
      console.log(values);
      toast({
         title: 'Voucher Saved (Simulated)',
-        description: 'Your payment voucher has been saved.',
+        description: `Voucher ${values.voucherNumber} has been saved.`,
      })
+     // For simulation, we'll just get the next number for the next form.
+     setVoucherNumber(getNextVoucherNumber(true));
   }
 
   return (
@@ -114,7 +112,7 @@ export default function PaymentVoucherPage() {
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">PAYMENT VOUCHER</h1>
                   <div className="grid grid-cols-2 gap-1 text-sm">
                     <span className="font-semibold">Voucher #</span><span>{voucherNumber}</span>
-                    <span className="font-semibold">Voucher Date</span><span>{format(form.watch('date'), 'PPP')}</span>
+                    <span className="font-semibold">Voucher Date</span><span>{formattedDate}</span>
                   </div>
                 </div>
               </header>
@@ -133,7 +131,7 @@ export default function PaymentVoucherPage() {
                               )}
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                              {field.value ? format(field.value, "dd/MM/yyyy") : <span>Pick a date</span>}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0 no-print">
@@ -187,7 +185,7 @@ export default function PaymentVoucherPage() {
                                     <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder={companyProfile.bankAccounts.length === 0 ? "No bank accounts set up" : "Select an account"} />
-                                    </SelectTrigger>
+                                    </Trigger>
                                     </FormControl>
                                     <SelectContent className="no-print">
                                        {companyProfile.bankAccounts.map(acc => (
