@@ -93,7 +93,7 @@ export default function PaymentVoucherPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <Header title="New Payment Voucher" />
+      <Header title="New Payment Voucher" className="no-print" />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
         <DocumentToolbar />
         <Form {...form}>
