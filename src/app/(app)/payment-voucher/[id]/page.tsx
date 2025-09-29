@@ -17,9 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 
 type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
 
-const DetailRow = ({ label, value, valueClassName }: { label: string; value: string | undefined | null, valueClassName?: string }) => (
+const DetailRow = ({ label, value, valueClassName, labelClassName }: { label: string; value: string | undefined | null, valueClassName?: string, labelClassName?: string }) => (
     <div className="grid grid-cols-3 gap-1 py-1">
-        <span className="font-semibold text-muted-foreground">{label}:</span>
+        <span className={cn("font-semibold text-muted-foreground", labelClassName)}>{label}:</span>
         <span className={`col-span-2 ${valueClassName}`}>{value}</span>
     </div>
 );
@@ -145,28 +145,28 @@ export default function PaymentVoucherPreviewPage() {
           {/* Payment Details */}
           <div className="grid grid-cols-2 gap-8 mb-12">
             <div className="space-y-2">
-                <DetailRow label="Payment Method" value={voucher.paymentMethod} />
-                <DetailRow label="From Account" value={`${fromAccount?.bankName} - ${fromAccount?.accountNumber}`} />
+                <DetailRow label="Payment Method" value={voucher.paymentMethod} labelClassName="whitespace-nowrap"/>
+                <DetailRow label="From Account" value={`${fromAccount?.bankName} - ${fromAccount?.accountNumber}`} labelClassName="whitespace-nowrap"/>
             </div>
              <div className="space-y-2">
                 <p className="font-semibold text-muted-foreground">Payee Bank Details:</p>
                  <DetailRow label="Bank Name" value={voucher.payeeBankName} />
                  <DetailRow label="Account Name" value={voucher.payeeAccountName} />
-                 <DetailRow label="Account Number" value={voucher.payeeAccountNumber} />
+                 <DetailRow label="Account Number" value={voucher.payeeAccountNumber} labelClassName="whitespace-nowrap" />
             </div>
           </div>
 
 
           {/* Footer */}
-          <footer className="grid grid-cols-2 gap-8 pt-12 mt-12">
+          <footer className="grid grid-cols-2 gap-8 pt-8 mt-12">
              <div className="text-center">
-                <div className="border-b border-foreground w-1/2 mx-auto"></div>
                 <p className='text-sm mt-2'>Prepared By</p>
+                <div className="border-b border-foreground w-1/2 mx-auto mt-12 mb-2"></div>
                 <p className="text-sm font-semibold mt-1">{preparedBy?.name}</p>
              </div>
              <div className="text-center">
-                <div className="border-b border-foreground w-1/2 mx-auto"></div>
                 <p className='text-sm mt-2'>Approved By</p>
+                <div className="border-b border-foreground w-1/2 mx-auto mt-12 mb-2"></div>
                 <p className="text-sm font-semibold mt-1">{approvedBy?.name}</p>
              </div>
           </footer>
