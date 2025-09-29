@@ -7,6 +7,7 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from "lucide-react"
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -24,12 +25,15 @@ import { useToast } from '@/hooks/use-toast';
 import { AISuggestionButton } from '@/components/ai-suggestion-button';
 
 const voucherSchema = z.object({
+  voucherNumber: z.string(),
   payeeName: z.string().min(1, 'Payee name is required'),
   date: z.date(),
   amount: z.coerce.number().positive('Amount must be positive'),
   paymentMethod: z.string().min(1, 'Payment method is required'),
   bankAccountId: z.string().min(1, "Please select a bank account"),
   description: z.string().min(1, "Description is required"),
+  preparedBy: z.string().min(1, "Please select who prepared the voucher"),
+  approvedBy: z.string().min(1, "Please select who approved the voucher"),
 });
 
 // A library for converting number to words is needed, but to avoid adding dependencies, we'll use a simple placeholder.
@@ -37,25 +41,40 @@ function numberToWords(num: number): string {
     if (num === 0) return 'Zero';
     if (!num) return '';
     // This is a simplified version. A real app would use a library.
-    return `${num.toLocaleString('en-US')} dollars only`;
+    return `${num.toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })} only`;
 }
 
 export default function PaymentVoucherPage() {
   const { state: companyProfile } = useCompanyProfile();
   const { toast } = useToast();
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
+  const [voucherNumber, setVoucherNumber] = useState('');
+
+  useEffect(() => {
+    const randomVoucher = `PV-${Math.floor(1000 + Math.random() * 9000)}`;
+    setVoucherNumber(randomVoucher);
+  }, []);
 
   const form = useForm<z.infer<typeof voucherSchema>>({
     resolver: zodResolver(voucherSchema),
     defaultValues: {
+      voucherNumber: '',
       payeeName: '',
       date: new Date(),
       amount: 0,
       paymentMethod: 'Bank Transfer',
       bankAccountId: companyProfile.bankAccounts[0]?.id || '',
       description: '',
+      preparedBy: '',
+      approvedBy: '',
     },
   });
+
+  useEffect(() => {
+    if (voucherNumber) {
+      form.setValue('voucherNumber', voucherNumber);
+    }
+  }, [voucherNumber, form]);
 
   const amountInWords = numberToWords(form.watch('amount'));
 
@@ -80,7 +99,7 @@ export default function PaymentVoucherPage() {
                 <div>
                   {logoPlaceholder && (
                     <Image
-                      src={logoPlaceholder.imageUrl}
+                      src={companyProfile.logoUrl || logoPlaceholder.imageUrl}
                       alt="Company Logo"
                       width={150}
                       height={50}
@@ -93,6 +112,10 @@ export default function PaymentVoucherPage() {
                 </div>
                 <div className="text-right">
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">PAYMENT VOUCHER</h1>
+                  <div className="grid grid-cols-2 gap-1 text-sm">
+                    <span className="font-semibold">Voucher #</span><span>{voucherNumber}</span>
+                    <span className="font-semibold">Voucher Date</span><span>{format(form.watch('date'), 'PPP')}</span>
+                  </div>
                 </div>
               </header>
 
@@ -120,7 +143,7 @@ export default function PaymentVoucherPage() {
                     )} />
                   </div>
                    <div className="space-y-2">
-                     <span className="text-sm font-semibold text-muted-foreground">Amount</span>
+                     <span className="text-sm font-semibold text-muted-foreground">Amount (₦)</span>
                      <FormField control={form.control} name="amount" render={({ field }) => <Input type="number" {...field} className="text-2xl h-12 text-right font-bold" />} />
                   </div>
               </div>
@@ -194,16 +217,43 @@ export default function PaymentVoucherPage() {
 
               <Separator className="my-8" />
               
-              <footer className="grid grid-cols-3 gap-8 pt-8">
-                 <div className="pt-8 border-t border-dashed">
-                    <p className="font-semibold">Prepared By</p>
-                 </div>
-                 <div className="pt-8 border-t border-dashed">
-                    <p className="font-semibold">Checked By</p>
-                 </div>
-                 <div className="pt-8 border-t border-dashed">
-                    <p className="font-semibold">Approved By</p>
-                 </div>
+              <footer className="grid grid-cols-2 gap-8 pt-8">
+                 <FormField control={form.control} name="preparedBy" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Prepared By</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="no-print">
+                                {companyProfile.signatories.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                  )} />
+                 <FormField control={form.control} name="approvedBy" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Approved By</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="no-print">
+                                {companyProfile.signatories.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                  )} />
               </footer>
 
                <div className="flex justify-end mt-8 no-print">

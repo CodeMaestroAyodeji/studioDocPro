@@ -31,9 +31,12 @@ export type PurchaseOrderItem = {
 };
 
 export type PaymentVoucher = {
+  voucherNumber: string;
   payeeName: string;
   date: Date;
   amount: number;
   paymentMethod: string;
   bankAccountId: string;
+  preparedBy: string;
+  approvedBy: string;
 };

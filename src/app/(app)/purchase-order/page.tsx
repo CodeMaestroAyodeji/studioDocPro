@@ -80,7 +80,7 @@ export default function PurchaseOrderPage() {
   const { subtotal, totalTax, grandTotal } = calculateTotals();
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
   };
 
   return (
@@ -95,7 +95,7 @@ export default function PurchaseOrderPage() {
                 <div>
                   {logoPlaceholder && (
                     <Image
-                      src={logoPlaceholder.imageUrl}
+                      src={companyProfile.logoUrl || logoPlaceholder.imageUrl}
                       alt="Company Logo"
                       width={150}
                       height={50}
