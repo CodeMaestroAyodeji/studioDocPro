@@ -83,7 +83,7 @@ export default function PaymentVoucherPage() {
      })
      // For simulation, we'll just get the next number for the next form.
      setVoucherNumber(getNextVoucherNumber(true));
-  }
+  };
 
   return (
     <div className="flex flex-1 flex-col">
