@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 
-type StoredPurchaseOrder = Omit<PurchaseOrder, 'date'> & { date: string };
+type StoredPurchaseOrder = Omit<PurchaseOrder, 'date' | 'items'> & { date: string, items: (Omit<PurchaseOrder['items'][0], 'grossUp'> & {grossUp?: boolean})[] };
 
 const DEFAULT_TAX_RATE = 5; // 5%
 
@@ -37,6 +37,7 @@ export default function PurchaseOrderPreviewPage() {
         setPo({
           ...parsed,
           date: new Date(parsed.date),
+          items: parsed.items.map(item => ({...item, grossUp: item.grossUp || false}))
         });
       } else {
         toast({
@@ -79,31 +80,21 @@ export default function PurchaseOrderPreviewPage() {
   const calculateTotals = () => {
     if (!po) return { subtotal: 0, totalTax: 0, grandTotal: 0 };
     
-    let subtotal = 0;
-    let totalTax = 0;
+    const preTaxSubtotal = po.items.reduce((acc, item) => {
+        return acc + (item.quantity || 0) * (item.unitPrice || 0);
+    }, 0);
 
-    po.items.forEach(item => {
-        const quantity = item.quantity || 0;
-        const unitPrice = item.unitPrice || 0;
-        const lineTotal = quantity * unitPrice;
-
-        if (item.applyTax && item.grossUp) {
-            const grossedUpLineTotal = lineTotal / (1 - (DEFAULT_TAX_RATE / 100));
-            const taxOnItem = grossedUpLineTotal - lineTotal;
-            subtotal += grossedUpLineTotal;
-            totalTax += taxOnItem;
-        } else {
-            subtotal += lineTotal;
-            if (item.applyTax) {
-                totalTax += lineTotal * (DEFAULT_TAX_RATE / 100);
-            }
+    const totalTax = po.items.reduce((acc, item) => {
+        if (item.applyTax) {
+            return acc + (item.quantity || 0) * (item.unitPrice || 0) * (DEFAULT_TAX_RATE / 100);
         }
-    });
+        return acc;
+    }, 0);
     
-    const grandTotal = subtotal; // With gross up, subtotal is already the final amount
-    const displaySubtotal = po.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
+    const subtotalWithTax = preTaxSubtotal + totalTax;
+    const grandTotal = preTaxSubtotal;
 
-    return { subtotal: displaySubtotal, totalTax, grandTotal };
+    return { subtotal: subtotalWithTax, totalTax, grandTotal };
   };
 
   const { subtotal, totalTax, grandTotal } = calculateTotals();
@@ -111,6 +102,14 @@ export default function PurchaseOrderPreviewPage() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
   };
+  
+  const getItemAmount = (item: PurchaseOrder['items'][0]) => {
+      const baseAmount = (item.quantity || 0) * (item.unitPrice || 0);
+      if (item.applyTax) {
+          return baseAmount * (1 + DEFAULT_TAX_RATE / 100);
+      }
+      return baseAmount;
+  }
 
   return (
     <div className="flex flex-1 flex-col">
@@ -169,7 +168,6 @@ export default function PurchaseOrderPreviewPage() {
                       <TableHead className="text-right">Quantity</TableHead>
                       <TableHead className="w-[150px] text-right">Unit Price</TableHead>
                       <TableHead className="text-center">Tax (5%)</TableHead>
-                      <TableHead className="text-center">Gross Up</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -180,24 +178,23 @@ export default function PurchaseOrderPreviewPage() {
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
                         <TableCell className="text-center">{item.applyTax ? 'Yes' : 'No'}</TableCell>
-                        <TableCell className="text-center">{item.grossUp ? 'Yes' : 'No'}</TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatCurrency(item.quantity * item.unitPrice)}
+                          {formatCurrency(getItemAmount(item))}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                   <TableFooter>
                      <TableRow>
-                         <TableCell colSpan={5} className="text-right font-semibold">Subtotal</TableCell>
+                         <TableCell colSpan={4} className="text-right font-semibold">Subtotal</TableCell>
                          <TableCell className="text-right font-bold">{formatCurrency(subtotal)}</TableCell>
                      </TableRow>
                      <TableRow>
-                         <TableCell colSpan={5} className="text-right font-semibold">Total Tax</TableCell>
-                         <TableCell className="text-right font-bold">{formatCurrency(totalTax)}</TableCell>
+                         <TableCell colSpan={4} className="text-right font-semibold">Withholding Tax (5%)</TableCell>
+                         <TableCell className="text-right font-bold">({formatCurrency(totalTax)})</TableCell>
                      </TableRow>
                      <TableRow className="text-lg">
-                         <TableCell colSpan={5} className="text-right font-bold">Grand Total</TableCell>
+                         <TableCell colSpan={4} className="text-right font-bold">Grand Total</TableCell>
                          <TableCell className="text-right font-bold text-primary">{formatCurrency(grandTotal)}</TableCell>
                      </TableRow>
                   </TableFooter>

@@ -28,7 +28,6 @@ export type PurchaseOrderItem = {
   quantity: number;
   unitPrice: number;
   applyTax: boolean;
-  grossUp: boolean;
 };
 
 export type PurchaseOrder = {
