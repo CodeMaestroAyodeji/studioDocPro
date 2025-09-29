@@ -78,15 +78,32 @@ export default function PurchaseOrderPreviewPage() {
 
   const calculateTotals = () => {
     if (!po) return { subtotal: 0, totalTax: 0, grandTotal: 0 };
-    const subtotal = po.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
-    const totalTax = po.items.reduce((acc, item) => {
-        if (item.applyTax) {
-            return acc + ((item.quantity || 0) * (item.unitPrice || 0) * DEFAULT_TAX_RATE) / 100;
+    
+    let subtotal = 0;
+    let totalTax = 0;
+
+    po.items.forEach(item => {
+        const quantity = item.quantity || 0;
+        const unitPrice = item.unitPrice || 0;
+        const lineTotal = quantity * unitPrice;
+
+        if (item.applyTax && item.grossUp) {
+            const grossedUpLineTotal = lineTotal / (1 - (DEFAULT_TAX_RATE / 100));
+            const taxOnItem = grossedUpLineTotal - lineTotal;
+            subtotal += grossedUpLineTotal;
+            totalTax += taxOnItem;
+        } else {
+            subtotal += lineTotal;
+            if (item.applyTax) {
+                totalTax += lineTotal * (DEFAULT_TAX_RATE / 100);
+            }
         }
-        return acc;
-    }, 0);
-    const grandTotal = subtotal + totalTax;
-    return { subtotal, totalTax, grandTotal };
+    });
+    
+    const grandTotal = subtotal; // With gross up, subtotal is already the final amount
+    const displaySubtotal = po.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
+
+    return { subtotal: displaySubtotal, totalTax, grandTotal };
   };
 
   const { subtotal, totalTax, grandTotal } = calculateTotals();
@@ -148,10 +165,11 @@ export default function PurchaseOrderPreviewPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[45%]">Description</TableHead>
+                      <TableHead className="w-[40%]">Description</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
                       <TableHead className="w-[150px] text-right">Unit Price</TableHead>
                       <TableHead className="text-center">Tax (5%)</TableHead>
+                      <TableHead className="text-center">Gross Up</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -162,6 +180,7 @@ export default function PurchaseOrderPreviewPage() {
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
                         <TableCell className="text-center">{item.applyTax ? 'Yes' : 'No'}</TableCell>
+                        <TableCell className="text-center">{item.grossUp ? 'Yes' : 'No'}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(item.quantity * item.unitPrice)}
                         </TableCell>
@@ -170,15 +189,15 @@ export default function PurchaseOrderPreviewPage() {
                   </TableBody>
                   <TableFooter>
                      <TableRow>
-                         <TableCell colSpan={4} className="text-right font-semibold">Subtotal</TableCell>
+                         <TableCell colSpan={5} className="text-right font-semibold">Subtotal</TableCell>
                          <TableCell className="text-right font-bold">{formatCurrency(subtotal)}</TableCell>
                      </TableRow>
                      <TableRow>
-                         <TableCell colSpan={4} className="text-right font-semibold">Total Tax</TableCell>
+                         <TableCell colSpan={5} className="text-right font-semibold">Total Tax</TableCell>
                          <TableCell className="text-right font-bold">{formatCurrency(totalTax)}</TableCell>
                      </TableRow>
                      <TableRow className="text-lg">
-                         <TableCell colSpan={4} className="text-right font-bold">Grand Total</TableCell>
+                         <TableCell colSpan={5} className="text-right font-bold">Grand Total</TableCell>
                          <TableCell className="text-right font-bold text-primary">{formatCurrency(grandTotal)}</TableCell>
                      </TableRow>
                   </TableFooter>

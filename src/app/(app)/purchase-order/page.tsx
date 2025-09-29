@@ -24,6 +24,7 @@ import { getNextPoNumber } from '@/lib/po-sequence';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
 
 
 const poItemSchema = z.object({
@@ -32,6 +33,7 @@ const poItemSchema = z.object({
   quantity: z.coerce.number().min(0.01, 'Must be > 0'),
   unitPrice: z.coerce.number().min(0, 'Cannot be negative'),
   applyTax: z.boolean(),
+  grossUp: z.boolean(),
 });
 
 const poSchema = z.object({
@@ -65,7 +67,7 @@ export default function PurchaseOrderPage() {
       date: new Date(),
       vendor: '',
       projectName: '',
-      items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, applyTax: false }],
+      items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, applyTax: false, grossUp: false }],
       signatory1: companyProfile.signatories[0]?.id || '',
       signatory2: companyProfile.signatories[1]?.id || '',
     },
@@ -87,15 +89,31 @@ export default function PurchaseOrderPage() {
   const watchedItems = watchedForm.items || [];
 
   const calculateTotals = () => {
-    const subtotal = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
-    const totalTax = watchedItems.reduce((acc, item) => {
-        if (item.applyTax) {
-            return acc + ((item.quantity || 0) * (item.unitPrice || 0) * DEFAULT_TAX_RATE) / 100;
+    let subtotal = 0;
+    let totalTax = 0;
+
+    watchedItems.forEach(item => {
+        const quantity = item.quantity || 0;
+        const unitPrice = item.unitPrice || 0;
+        const lineTotal = quantity * unitPrice;
+
+        if (item.applyTax && item.grossUp) {
+            const grossedUpLineTotal = lineTotal / (1 - (DEFAULT_TAX_RATE / 100));
+            const taxOnItem = grossedUpLineTotal - lineTotal;
+            subtotal += grossedUpLineTotal;
+            totalTax += taxOnItem;
+        } else {
+            subtotal += lineTotal;
+            if (item.applyTax) {
+                totalTax += lineTotal * (DEFAULT_TAX_RATE / 100);
+            }
         }
-        return acc;
-    }, 0);
-    const grandTotal = subtotal + totalTax;
-    return { subtotal, totalTax, grandTotal };
+    });
+    
+    const grandTotal = subtotal; // With gross up, subtotal is already the final amount
+    const displaySubtotal = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
+
+    return { subtotal: displaySubtotal, totalTax, grandTotal };
   };
 
   const { subtotal, totalTax, grandTotal } = calculateTotals();
@@ -184,10 +202,11 @@ export default function PurchaseOrderPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[45%]">Description</TableHead>
+                      <TableHead className="w-[40%]">Description</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
                       <TableHead className="w-[150px] text-right">Unit Price</TableHead>
                       <TableHead className="text-center">Tax (5%)</TableHead>
+                      <TableHead className="text-center">Gross Up</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="no-print"></TableHead>
                     </TableRow>
@@ -222,6 +241,23 @@ export default function PurchaseOrderPage() {
                                 )}
                             />
                         </TableCell>
+                        <TableCell className="text-center">
+                            <FormField
+                                control={form.control}
+                                name={`items.${index}.grossUp`}
+                                render={({ field }) => (
+                                    <FormItem className="flex items-center justify-center">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            disabled={!watchedItems[index]?.applyTax}
+                                        />
+                                    </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency((watchedItems[index]?.quantity || 0) * (watchedItems[index]?.unitPrice || 0))}
                         </TableCell>
@@ -235,24 +271,24 @@ export default function PurchaseOrderPage() {
                   </TableBody>
                   <TableFooter>
                      <TableRow>
-                         <TableCell colSpan={4} className="text-right font-semibold">Subtotal</TableCell>
+                         <TableCell colSpan={5} className="text-right font-semibold">Subtotal</TableCell>
                          <TableCell className="text-right font-bold">{formatCurrency(subtotal)}</TableCell>
                          <TableCell className="no-print"></TableCell>
                      </TableRow>
                      <TableRow>
-                         <TableCell colSpan={4} className="text-right font-semibold">Total Tax</TableCell>
+                         <TableCell colSpan={5} className="text-right font-semibold">Total Tax</TableCell>
                          <TableCell className="text-right font-bold">{formatCurrency(totalTax)}</TableCell>
                          <TableCell className="no-print"></TableCell>
                      </TableRow>
                      <TableRow className="text-lg">
-                         <TableCell colSpan={4} className="text-right font-bold">Grand Total</TableCell>
+                         <TableCell colSpan={5} className="text-right font-bold">Grand Total</TableCell>
                          <TableCell className="text-right font-bold text-primary">{formatCurrency(grandTotal)}</TableCell>
                          <TableCell className="no-print"></TableCell>
                      </TableRow>
                   </TableFooter>
                 </Table>
                 <div className="mt-4 no-print">
-                    <Button type="button" variant="outline" onClick={() => append({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, applyTax: false })}>
+                    <Button type="button" variant="outline" onClick={() => append({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, applyTax: false, grossUp: false })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
                 </div>
