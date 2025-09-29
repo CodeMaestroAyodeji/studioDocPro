@@ -20,13 +20,15 @@ import { DocumentPage } from '@/components/document-page';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { AISuggestionButton } from '@/components/ai-suggestion-button';
 import { Textarea } from '@/components/ui/textarea';
+import { getNextPoNumber } from '@/lib/po-sequence';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const poItemSchema = z.object({
   id: z.string(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(0.01, 'Must be > 0'),
   unitPrice: z.coerce.number().min(0, 'Cannot be negative'),
-  tax: z.coerce.number().min(0, 'Cannot be negative').max(100, 'Cannot be > 100'),
+  applyTax: z.boolean(),
 });
 
 const poSchema = z.object({
@@ -36,14 +38,16 @@ const poSchema = z.object({
   items: z.array(poItemSchema).min(1, 'At least one item is required'),
 });
 
+const DEFAULT_TAX_RATE = 5; // 5%
+
 export default function PurchaseOrderPage() {
   const { state: companyProfile } = useCompanyProfile();
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
   const [poNumber, setPoNumber] = useState('');
 
   useEffect(() => {
-    const randomPo = `PO-${Math.floor(1000 + Math.random() * 9000)}`;
-    setPoNumber(randomPo);
+    const nextPoNumber = getNextPoNumber();
+    setPoNumber(nextPoNumber);
   }, []);
 
   const form = useForm<z.infer<typeof poSchema>>({
@@ -52,7 +56,7 @@ export default function PurchaseOrderPage() {
       poNumber: '',
       date: new Date(),
       vendor: '',
-      items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, tax: 0 }],
+      items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, applyTax: false }],
     },
   });
   
@@ -72,7 +76,12 @@ export default function PurchaseOrderPage() {
 
   const calculateTotals = () => {
     const subtotal = watchedItems.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
-    const totalTax = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice * item.tax) / 100, 0);
+    const totalTax = watchedItems.reduce((acc, item) => {
+        if (item.applyTax) {
+            return acc + (item.quantity * item.unitPrice * DEFAULT_TAX_RATE) / 100;
+        }
+        return acc;
+    }, 0);
     const grandTotal = subtotal + totalTax;
     return { subtotal, totalTax, grandTotal };
   };
@@ -110,7 +119,7 @@ export default function PurchaseOrderPage() {
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">PURCHASE ORDER</h1>
                   <div className="grid grid-cols-2 gap-1 text-sm">
                     <span className="font-semibold">PO #</span><span>{poNumber}</span>
-                    <span className="font-semibold">Date</span><span>{format(form.watch('date'), 'PPP')}</span>
+                    <span className="font-semibold">Date</span><span>{format(form.watch('date'), 'dd/MM/yyyy')}</span>
                   </div>
                 </div>
               </header>
@@ -130,10 +139,10 @@ export default function PurchaseOrderPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[50%]">Description</TableHead>
+                      <TableHead className="w-[45%]">Description</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Tax (%)</TableHead>
+                      <TableHead className="w-[150px] text-right">Unit Price</TableHead>
+                      <TableHead className="text-center">Tax (5%)</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="no-print"></TableHead>
                     </TableRow>
@@ -153,10 +162,23 @@ export default function PurchaseOrderPage() {
                           <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => <Input type="number" {...field} className="text-right" />} />
                         </TableCell>
                         <TableCell>
-                          <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => <Input type="number" {...field} className="text-right" />} />
+                          <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => <Input type="number" {...field} className="text-right w-full" />} />
                         </TableCell>
-                        <TableCell>
-                          <FormField control={form.control} name={`items.${index}.tax`} render={({ field }) => <Input type="number" {...field} className="text-right" />} />
+                        <TableCell className="text-center">
+                            <FormField
+                                control={form.control}
+                                name={`items.${index}.applyTax`}
+                                render={({ field }) => (
+                                    <FormItem className="flex items-center justify-center">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    </FormItem>
+                                )}
+                            />
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency((watchedItems[index]?.quantity || 0) * (watchedItems[index]?.unitPrice || 0))}
@@ -188,7 +210,7 @@ export default function PurchaseOrderPage() {
                   </TableFooter>
                 </Table>
                 <div className="mt-4 no-print">
-                    <Button type="button" variant="outline" onClick={() => append({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, tax: 0 })}>
+                    <Button type="button" variant="outline" onClick={() => append({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, applyTax: false })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
                 </div>
@@ -196,13 +218,21 @@ export default function PurchaseOrderPage() {
 
               <Separator className="my-8" />
               
-              <footer className="grid grid-cols-2 gap-8 pt-8">
-                 {companyProfile.signatories.slice(0, 2).map((s, i) => (
-                    <div key={s.id} className="pt-8 border-t border-dashed">
-                        <p className="font-semibold">{s.name}</p>
-                        <p className="text-sm text-muted-foreground">{s.title}</p>
-                    </div>
-                ))}
+              <footer className="space-y-4">
+                 <div className="grid grid-cols-2 gap-8 pt-8">
+                    {companyProfile.signatories.slice(0, 2).map((s, i) => (
+                        <div key={s.id} className="pt-8 border-t border-dashed">
+                            <p className="font-semibold">{s.name}</p>
+                            <p className="text-sm text-muted-foreground">{s.title}</p>
+                        </div>
+                    ))}
+                 </div>
+                 <div className="text-center text-xs text-muted-foreground pt-4">
+                    <p>{companyProfile.address}</p>
+                    <p>
+                        <span>{companyProfile.phone}</span> | <span>{companyProfile.email}</span> | <span>{companyProfile.website}</span>
+                    </p>
+                 </div>
               </footer>
             </DocumentPage>
           </form>
