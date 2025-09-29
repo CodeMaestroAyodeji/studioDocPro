@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from "lucide-react"
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -41,6 +42,7 @@ const voucherSchema = z.object({
 export default function PaymentVoucherPage() {
   const { state: companyProfile } = useCompanyProfile();
   const { toast } = useToast();
+  const router = useRouter();
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
   const [voucherNumber, setVoucherNumber] = useState('');
   
@@ -66,24 +68,25 @@ export default function PaymentVoucherPage() {
   }, [form]);
 
   const handleSubmit = (values: z.infer<typeof voucherSchema>) => {
-     console.log(values);
-     toast({
-        title: 'Voucher Saved (Simulated)',
-        description: `Voucher ${values.voucherNumber} has been saved.`,
-     });
-     
-     const nextVoucherNumber = getNextVoucherNumber(true);
-     setVoucherNumber(nextVoucherNumber);
-     form.reset({
-        ...form.getValues(),
-        voucherNumber: nextVoucherNumber,
-        payeeName: '',
-        amount: 0,
-        description: '',
-        date: new Date(),
-        preparedBy: '',
-        approvedBy: '',
-     });
+     try {
+        const nextVoucherNumber = getNextVoucherNumber(true);
+        const voucherWithDateAsString = {
+            ...values,
+            date: values.date.toISOString(),
+        }
+        localStorage.setItem(`voucher_${values.voucherNumber}`, JSON.stringify(voucherWithDateAsString));
+        toast({
+            title: 'Voucher Saved',
+            description: `Voucher ${values.voucherNumber} has been saved.`,
+        });
+        router.push(`/payment-voucher/${values.voucherNumber}`);
+     } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error Saving Voucher',
+            description: 'Could not save the voucher to local storage.',
+        });
+     }
   };
 
   const watchedDate = form.watch('date');

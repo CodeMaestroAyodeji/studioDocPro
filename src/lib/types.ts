@@ -37,6 +37,7 @@ export type PaymentVoucher = {
   amount: number;
   paymentMethod: string;
   bankAccountId: string;
+  description: string;
   preparedBy: string;
   approvedBy: string;
 };
