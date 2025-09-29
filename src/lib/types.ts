@@ -40,4 +40,7 @@ export type PaymentVoucher = {
   description: string;
   preparedBy: string;
   approvedBy: string;
+  payeeBankName?: string;
+  payeeAccountName?: string;
+  payeeAccountNumber?: string;
 };

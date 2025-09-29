@@ -1,9 +1,6 @@
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -11,7 +8,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { Pencil, Download } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Header } from '@/components/header';
 import { DocumentPage } from '@/components/document-page';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -20,6 +16,13 @@ import type { PaymentVoucher } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
+
+const DetailRow = ({ label, value }: { label: string; value: string | undefined | null }) => (
+    <div className="grid grid-cols-3 gap-2 py-1">
+        <span className="font-semibold text-muted-foreground">{label}:</span>
+        <span className="col-span-2">{value}</span>
+    </div>
+);
 
 export default function PaymentVoucherPreviewPage() {
   const { state: companyProfile } = useCompanyProfile();
@@ -59,7 +62,7 @@ export default function PaymentVoucherPreviewPage() {
   if (!voucher) {
     return (
       <div className="flex flex-1 flex-col">
-        <Header title="Loading Voucher..." />
+        <Header title="Loading Voucher..." className="no-print" />
         <main className="flex-1 p-4 sm:px-6 sm:py-0 text-center">
             <p>Loading voucher details...</p>
         </main>
@@ -93,7 +96,8 @@ export default function PaymentVoucherPreviewPage() {
         </div>
 
         <DocumentPage className="payment-voucher-print">
-          <header className="grid grid-cols-2 gap-8 mb-8">
+          {/* Header */}
+          <header className="grid grid-cols-2 gap-8 mb-12">
             <div>
               {logoPlaceholder && (
                 <Image
@@ -117,47 +121,42 @@ export default function PaymentVoucherPreviewPage() {
             </div>
           </header>
 
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8">
-              <div>
-                <span className="print-label">Amount</span>
-                <p className="font-bold text-2xl">{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(voucher.amount)}</p>
-              </div>
+          {/* Body */}
+          <div className="space-y-4 mb-8 text-sm">
+             <DetailRow label="Being Payment to" value={voucher.payeeName} />
+             <DetailRow label="For" value={voucher.description} />
+             <div className="py-2">
+                <p className="font-semibold text-muted-foreground">Amount in words:</p>
+                <p className="capitalize">{amountInWords}</p>
+             </div>
+          </div>
+          
+          {/* Payment Details */}
+          <div className="grid grid-cols-2 gap-8 mb-12 text-sm">
+            <div className="space-y-2">
+                <DetailRow label="Payment Method" value={voucher.paymentMethod} />
+                <DetailRow label="From Account" value={`${fromAccount?.bankName} - ${fromAccount?.accountNumber}`} />
+            </div>
+             <div className="space-y-2">
+                <p className="font-semibold text-muted-foreground">Payee Bank Details:</p>
+                 <DetailRow label="Bank Name" value={voucher.payeeBankName} />
+                 <DetailRow label="Account Name" value={voucher.payeeAccountName} />
+                 <DetailRow label="Account Number" value={voucher.payeeAccountNumber} />
+            </div>
           </div>
 
-           <div className="border rounded-lg p-4 space-y-4 mb-8">
-                <div className="form-item-print-view" style={{display: 'block'}}>
-                    <span className="print-label">Payee Name</span>
-                    <span className="print-value">{voucher.payeeName}</span>
-                </div>
-                <div className="form-item-print-view" style={{display: 'block'}}>
-                    <span className="print-label">Payment Method</span>
-                    <span className="print-value">{voucher.paymentMethod}</span>
-                </div>
-                <div className="form-item-print-view" style={{display: 'block'}}>
-                    <span className="print-label">From Account</span>
-                    <span className="print-value">{fromAccount?.bankName} - {fromAccount?.accountNumber}</span>
-                </div>
-                <div className="form-item-print-view" style={{display: 'block'}}>
-                    <span className="print-label">Description of Payment</span>
-                    <span className="print-value">{voucher.description}</span>
-                </div>
-                 
-                 <div className="pt-2">
-                    <p className="text-sm font-semibold">Amount in words</p>
-                    <p className="text-muted-foreground capitalize">{amountInWords}</p>
-                 </div>
-           </div>
 
-          <Separator className="my-8" />
-          
-          <footer className="grid grid-cols-2 gap-8 pt-12 mt-12">
-             <div className="form-item-print-view" style={{display: 'block'}}>
-                <p className='text-sm mb-2'>Prepared By</p>
-                <span className="print-value border-t border-dashed pt-2">{preparedBy?.name}</span>
+          {/* Footer */}
+          <footer className="grid grid-cols-2 gap-8 pt-24 mt-12">
+             <div className="text-center">
+                <div className="border-b-2 border-dashed border-foreground w-full"></div>
+                <p className='text-sm mt-2'>Prepared By</p>
+                <p className="text-sm font-semibold mt-1">{preparedBy?.name}</p>
              </div>
-             <div className="form-item-print-view" style={{display: 'block'}}>
-                <p className='text-sm mb-2'>Approved By</p>
-                <span className="print-value border-t border-dashed pt-2">{approvedBy?.name}</span>
+             <div className="text-center">
+                <div className="border-b-2 border-dashed border-foreground w-full"></div>
+                <p className='text-sm mt-2'>Approved By</p>
+                <p className="text-sm font-semibold mt-1">{approvedBy?.name}</p>
              </div>
           </footer>
         </DocumentPage>

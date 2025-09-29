@@ -37,6 +37,9 @@ const voucherSchema = z.object({
   description: z.string().min(1, "Description is required"),
   preparedBy: z.string().min(1, "Please select who prepared the voucher"),
   approvedBy: z.string().min(1, "Please select who approved the voucher"),
+  payeeBankName: z.string().optional(),
+  payeeAccountName: z.string().optional(),
+  payeeAccountNumber: z.string().optional(),
 });
 
 export default function PaymentVoucherPage() {
@@ -58,6 +61,9 @@ export default function PaymentVoucherPage() {
       description: '',
       preparedBy: '',
       approvedBy: '',
+      payeeBankName: '',
+      payeeAccountName: '',
+      payeeAccountNumber: '',
     },
   });
 
@@ -244,6 +250,32 @@ export default function PaymentVoucherPage() {
                         <p className="text-sm font-semibold">Amount in words</p>
                         <p className="text-muted-foreground capitalize">{amountInWords}</p>
                      </div>
+
+                    <Separator className="my-4" />
+                    <p className="text-sm font-semibold">Payee Bank Details (Optional)</p>
+                    <div className="grid md:grid-cols-3 gap-4">
+                        <FormField control={form.control} name="payeeBankName" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bank Name</FormLabel>
+                            <FormControl><Input placeholder="e.g. Zenith Bank" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="payeeAccountName" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Name</FormLabel>
+                            <FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="payeeAccountNumber" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Number</FormLabel>
+                            <FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                    </div>
                </div>
 
               <Separator className="my-8" />
