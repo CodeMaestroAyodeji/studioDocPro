@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
 
 const DetailRow = ({ label, value }: { label: string; value: string | undefined | null }) => (
-    <div className="grid grid-cols-3 gap-2 py-1">
+    <div className="grid grid-cols-3 gap-2 py-1.5">
         <span className="font-semibold text-muted-foreground">{label}:</span>
         <span className="col-span-2">{value}</span>
     </div>
@@ -85,7 +85,7 @@ export default function PaymentVoucherPreviewPage() {
       <Header title={`Voucher ${voucher.voucherNumber}`} className="no-print" />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
         <div className="mb-4 flex justify-end gap-2 no-print">
-            <Button variant="outline" onClick={() => router.push(`/payment-voucher`)}>
+            <Button variant="outline" onClick={() => router.push(`/payment-voucher/${voucherId}/edit`)}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
             </Button>
@@ -95,7 +95,7 @@ export default function PaymentVoucherPreviewPage() {
             </Button>
         </div>
 
-        <DocumentPage className="payment-voucher-print">
+        <DocumentPage className="payment-voucher-print text-base">
           {/* Header */}
           <header className="grid grid-cols-2 gap-8 mb-12">
             <div>
@@ -113,7 +113,7 @@ export default function PaymentVoucherPreviewPage() {
               <p className="text-sm text-muted-foreground">{companyProfile.address}</p>
             </div>
             <div className="text-right">
-              <h1 className="text-4xl font-bold font-headline text-primary mb-2">PAYMENT VOUCHER</h1>
+              <h1 className="text-3xl font-bold font-headline text-primary mb-2 whitespace-nowrap">PAYMENT VOUCHER</h1>
               <div className="grid grid-cols-2 gap-1 text-sm">
                 <span className="font-semibold">Voucher #</span><span>{voucher.voucherNumber}</span>
                 <span className="font-semibold">Voucher Date</span><span>{formattedDate}</span>
@@ -122,7 +122,7 @@ export default function PaymentVoucherPreviewPage() {
           </header>
 
           {/* Body */}
-          <div className="space-y-4 mb-8 text-sm">
+          <div className="space-y-4 mb-8">
              <DetailRow label="Being Payment to" value={voucher.payeeName} />
              <DetailRow label="For" value={voucher.description} />
              <div className="py-2">
@@ -132,7 +132,7 @@ export default function PaymentVoucherPreviewPage() {
           </div>
           
           {/* Payment Details */}
-          <div className="grid grid-cols-2 gap-8 mb-12 text-sm">
+          <div className="grid grid-cols-2 gap-8 mb-12">
             <div className="space-y-2">
                 <DetailRow label="Payment Method" value={voucher.paymentMethod} />
                 <DetailRow label="From Account" value={`${fromAccount?.bankName} - ${fromAccount?.accountNumber}`} />
@@ -149,12 +149,12 @@ export default function PaymentVoucherPreviewPage() {
           {/* Footer */}
           <footer className="grid grid-cols-2 gap-8 pt-24 mt-12">
              <div className="text-center">
-                <div className="border-b-2 border-dashed border-foreground w-full"></div>
+                <div className="border-b border-foreground w-3/4 mx-auto"></div>
                 <p className='text-sm mt-2'>Prepared By</p>
                 <p className="text-sm font-semibold mt-1">{preparedBy?.name}</p>
              </div>
              <div className="text-center">
-                <div className="border-b-2 border-dashed border-foreground w-full"></div>
+                <div className="border-b border-foreground w-3/4 mx-auto"></div>
                 <p className='text-sm mt-2'>Approved By</p>
                 <p className="text-sm font-semibold mt-1">{approvedBy?.name}</p>
              </div>
