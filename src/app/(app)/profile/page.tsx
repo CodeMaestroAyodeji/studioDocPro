@@ -4,8 +4,9 @@ import { useCompanyProfile } from '@/contexts/company-profile-context';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +16,6 @@ import { Separator } from '@/components/ui/separator';
 import { Header } from '@/components/header';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Trash2 } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const signatorySchema = z.object({
   id: z.string(),
@@ -36,7 +36,7 @@ const profileSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
   website: z.string().url('Invalid URL'),
-  logoUrl: z.string(),
+  logoUrl: z.string().url('Logo is required').min(1, 'Logo is required'),
   signatories: z.array(signatorySchema),
   bankAccounts: z.array(bankAccountSchema),
 });
@@ -44,9 +44,9 @@ const profileSchema = z.object({
 export default function ProfilePage() {
   const { state, dispatch } = useCompanyProfile();
   const { toast } = useToast();
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const logoPlaceholder = PlaceHolderImages.find(p => p.id === 'logo');
-
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: state,
@@ -72,11 +72,29 @@ export default function ProfilePage() {
       title: 'Profile Updated',
       description: 'Your company profile has been saved successfully.',
     });
+    router.push('/profile/view');
   };
+
+  const handleLogoUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        form.setValue('logoUrl', reader.result as string, { shouldValidate: true });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const logoUrl = form.watch('logoUrl');
 
   return (
     <div className="flex flex-1 flex-col">
-      <Header title="Company Profile" />
+      <Header title="Edit Company Profile" />
       <main className="flex-1 p-4 sm:px-6 sm:py-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -91,16 +109,27 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
-                  <Image 
-                    src={logoPlaceholder?.imageUrl || '/fallback-logo.png'} 
-                    alt="Company Logo"
-                    width={150}
-                    height={50}
-                    data-ai-hint={logoPlaceholder?.imageHint}
-                    className="rounded-md object-contain"
+                  {logoUrl && (
+                    <Image 
+                      src={logoUrl} 
+                      alt="Company Logo"
+                      width={150}
+                      height={50}
+                      className="rounded-md object-contain border p-1"
+                    />
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept="image/*"
                   />
-                  <Button variant="outline" type="button" onClick={() => alert('File upload functionality is not implemented in this demo.')}>Upload Logo</Button>
+                  <Button variant="outline" type="button" onClick={handleLogoUploadClick}>Upload Logo</Button>
                 </div>
+                 <FormField control={form.control} name="logoUrl" render={({ field }) => (
+                    <FormItem className="hidden"><FormLabel>Logo URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="name" render={({ field }) => (
                     <FormItem><FormLabel>Company Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
