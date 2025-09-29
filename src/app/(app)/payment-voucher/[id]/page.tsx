@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -79,7 +80,16 @@ export default function PaymentVoucherPreviewPage() {
   const approvedBy = companyProfile.signatories.find(s => s.id === voucher.approvedBy);
   
   const handlePrint = () => {
+    if (!voucher) return;
+
+    const originalTitle = document.title;
+    const safePayeeName = voucher.payeeName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const formattedDateForFile = format(voucher.date, 'yyyy-MM-dd');
+    const newTitle = `${safePayeeName}_${voucher.voucherNumber}_${formattedDateForFile}`;
+    
+    document.title = newTitle;
     window.print();
+    document.title = originalTitle;
   };
 
   return (
@@ -99,7 +109,7 @@ export default function PaymentVoucherPreviewPage() {
 
         <DocumentPage className="payment-voucher-print text-base">
           {/* Header */}
-          <header className="grid grid-cols-2 gap-8 mb-12">
+          <header className="grid grid-cols-2 gap-8 mb-8">
             <div>
               {logoPlaceholder && (
                 <Image
@@ -159,16 +169,16 @@ export default function PaymentVoucherPreviewPage() {
 
 
           {/* Footer */}
-          <footer className="grid grid-cols-2 gap-8 pt-8 mt-12">
+          <footer className="grid grid-cols-2 gap-8 pt-8 mt-8">
              <div className="text-center">
+                <p className='text-sm font-semibold mt-1'>{preparedBy?.name}</p>
+                <div className="border-b border-foreground w-1/2 mx-auto mt-2 mb-2"></div>
                 <p className='text-sm mt-2'>Prepared By</p>
-                <div className="border-b border-foreground w-1/2 mx-auto mt-12 mb-2"></div>
-                <p className="text-sm font-semibold mt-1">{preparedBy?.name}</p>
              </div>
              <div className="text-center">
-                <p className='text-sm mt-2'>Approved By</p>
-                <div className="border-b border-foreground w-1/2 mx-auto mt-12 mb-2"></div>
                 <p className="text-sm font-semibold mt-1">{approvedBy?.name}</p>
+                <div className="border-b border-foreground w-1/2 mx-auto mt-2 mb-2"></div>
+                <p className='text-sm mt-2'>Approved By</p>
              </div>
           </footer>
         </DocumentPage>
