@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
@@ -18,10 +18,11 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import { DocumentToolbar } from '@/components/document-toolbar';
 import { DocumentPage } from '@/components/document-page';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { AISuggestionButton } from '@/components/ai-suggestion-button';
 import { Textarea } from '@/components/ui/textarea';
 import { getNextPoNumber } from '@/lib/po-sequence';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 const poItemSchema = z.object({
   id: z.string(),
@@ -36,6 +37,8 @@ const poSchema = z.object({
   date: z.date(),
   vendor: z.string().min(1, 'Vendor details are required'),
   items: z.array(poItemSchema).min(1, 'At least one item is required'),
+  signatory1: z.string().optional(),
+  signatory2: z.string().optional(),
 });
 
 const DEFAULT_TAX_RATE = 5; // 5%
@@ -57,6 +60,8 @@ export default function PurchaseOrderPage() {
       date: new Date(),
       vendor: '',
       items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, applyTax: false }],
+      signatory1: companyProfile.signatories[0]?.id || '',
+      signatory2: companyProfile.signatories[1]?.id || '',
     },
   });
   
@@ -72,13 +77,14 @@ export default function PurchaseOrderPage() {
     name: 'items',
   });
 
-  const watchedItems = useWatch({ control: form.control, name: 'items' });
+  const watchedForm = useWatch({ control: form.control });
+  const watchedItems = watchedForm.items || [];
 
   const calculateTotals = () => {
-    const subtotal = watchedItems.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+    const subtotal = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
     const totalTax = watchedItems.reduce((acc, item) => {
         if (item.applyTax) {
-            return acc + (item.quantity * item.unitPrice * DEFAULT_TAX_RATE) / 100;
+            return acc + ((item.quantity || 0) * (item.unitPrice || 0) * DEFAULT_TAX_RATE) / 100;
         }
         return acc;
     }, 0);
@@ -91,6 +97,9 @@ export default function PurchaseOrderPage() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
   };
+  
+  const signatory1 = companyProfile.signatories.find(s => s.id === watchedForm.signatory1);
+  const signatory2 = companyProfile.signatories.find(s => s.id === watchedForm.signatory2);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -112,8 +121,6 @@ export default function PurchaseOrderPage() {
                       className="rounded-md object-contain mb-4"
                     />
                   )}
-                  <h2 className="font-bold text-lg">{companyProfile.name}</h2>
-                  <p className="text-sm text-muted-foreground">{companyProfile.address}</p>
                 </div>
                 <div className="text-right">
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">PURCHASE ORDER</h1>
@@ -151,12 +158,9 @@ export default function PurchaseOrderPage() {
                     {fields.map((field, index) => (
                       <TableRow key={field.id}>
                         <TableCell>
-                           <div className="flex items-center gap-1">
                             <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (
-                                <Input placeholder="Item description" {...field} className="flex-1" />
+                                <Input placeholder="Item description" {...field} />
                             )} />
-                            <AISuggestionButton fieldName={`items.${index}.description`} form={form} formSchema={poItemSchema} />
-                           </div>
                         </TableCell>
                         <TableCell>
                           <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => <Input type="number" {...field} className="text-right" />} />
@@ -219,15 +223,56 @@ export default function PurchaseOrderPage() {
               <Separator className="my-8" />
               
               <footer className="space-y-4">
-                 <div className="grid grid-cols-2 gap-8 pt-8">
-                    {companyProfile.signatories.slice(0, 2).map((s, i) => (
-                        <div key={s.id} className="pt-8 border-t border-dashed">
-                            <p className="font-semibold">{s.name}</p>
-                            <p className="text-sm text-muted-foreground">{s.title}</p>
-                        </div>
-                    ))}
+                 <div className="grid grid-cols-2 gap-8 pt-8 no-print">
+                    <FormField control={form.control} name="signatory1" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Authorized Signatory 1</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="no-print">
+                                {companyProfile.signatories.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                     <FormField control={form.control} name="signatory2" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Authorized Signatory 2</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="no-print">
+                                {companyProfile.signatories.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                 </div>
+                 <div className="grid grid-cols-2 gap-8 pt-8 print-only">
+                    <div className="pt-8 border-t border-dashed">
+                        <p className="font-semibold">{signatory1?.name}</p>
+                        <p className="text-sm text-muted-foreground">{signatory1?.title}</p>
+                    </div>
+                    <div className="pt-8 border-t border-dashed">
+                        <p className="font-semibold">{signatory2?.name}</p>
+                        <p className="text-sm text-muted-foreground">{signatory2?.title}</p>
+                    </div>
                  </div>
                  <div className="text-center text-xs text-muted-foreground pt-4">
+                    <p className='font-bold text-sm text-foreground'>{companyProfile.name}</p>
                     <p>{companyProfile.address}</p>
                     <p>
                         <span>{companyProfile.phone}</span> | <span>{companyProfile.email}</span> | <span>{companyProfile.website}</span>
