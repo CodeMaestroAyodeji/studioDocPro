@@ -22,7 +22,7 @@ type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
 const DetailRow = ({ label, value, valueClassName, labelClassName }: { label: string; value: string | undefined | null, valueClassName?: string, labelClassName?: string }) => (
     <div className="grid grid-cols-3 gap-1 py-1">
         <span className={cn("font-semibold text-muted-foreground", labelClassName)}>{label}:</span>
-        <span className={`col-span-2 ${valueClassName}`}>{value}</span>
+        <span className={cn("col-span-2", valueClassName)}>{value}</span>
     </div>
 );
 
@@ -188,3 +188,5 @@ export default function PaymentVoucherPreviewPage() {
     </div>
   );
 }
+
+    
