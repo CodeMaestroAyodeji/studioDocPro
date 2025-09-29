@@ -72,6 +72,7 @@ export default function PaymentVoucherPreviewPage() {
 
   const formattedDate = format(voucher.date, 'dd/MM/yyyy');
   const amountInWords = numberToWords(voucher.amount);
+  const formattedAmount = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(voucher.amount);
   const fromAccount = companyProfile.bankAccounts.find(b => b.id === voucher.bankAccountId);
   const preparedBy = companyProfile.signatories.find(s => s.id === voucher.preparedBy);
   const approvedBy = companyProfile.signatories.find(s => s.id === voucher.approvedBy);
@@ -123,8 +124,18 @@ export default function PaymentVoucherPreviewPage() {
 
           {/* Body */}
           <div className="space-y-4 mb-8">
-             <DetailRow label="Being Payment to" value={voucher.payeeName} valueClassName="font-bold text-lg" />
-             <DetailRow label="For" value={voucher.description} valueClassName="font-bold text-lg" />
+             <div className="grid grid-cols-3 gap-1 py-1">
+                <span className="font-semibold text-muted-foreground">Being Payment to:</span>
+                <span className="col-span-2 font-bold text-lg">{voucher.payeeName}</span>
+            </div>
+             <div className="grid grid-cols-3 gap-1 py-1">
+                <span className="font-semibold text-muted-foreground">For:</span>
+                <span className="col-span-2 font-bold text-lg">{voucher.description}</span>
+            </div>
+             <div className="py-2 mt-4 border-t border-b">
+                <p className="font-semibold text-muted-foreground">Amount:</p>
+                <p className="font-bold text-xl">{formattedAmount}</p>
+             </div>
              <div className="py-2">
                 <p className="font-semibold text-muted-foreground">Amount in words:</p>
                 <p className="capitalize">{amountInWords}</p>
@@ -147,7 +158,7 @@ export default function PaymentVoucherPreviewPage() {
 
 
           {/* Footer */}
-          <footer className="grid grid-cols-2 gap-8 pt-24 mt-12">
+          <footer className="grid grid-cols-2 gap-8 pt-12 mt-12">
              <div className="text-center">
                 <div className="border-b border-foreground w-1/2 mx-auto"></div>
                 <p className='text-sm mt-2'>Prepared By</p>
