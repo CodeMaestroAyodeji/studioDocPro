@@ -101,6 +101,10 @@
     display: none !important;
   }
   
+  .print-hide {
+    display: none !important;
+  }
+  
   .printable-area {
     width: 210mm;
     height: 297mm;

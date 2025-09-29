@@ -169,7 +169,7 @@ export default function PurchaseOrderPreviewPage() {
                       <TableHead className="w-[40%]">Description</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
                       <TableHead className="w-[150px] text-right">Unit Price</TableHead>
-                      <TableHead className="text-center">Tax (5%)</TableHead>
+                      <TableHead className="text-center print-hide">Tax (5%)</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -179,7 +179,7 @@ export default function PurchaseOrderPreviewPage() {
                         <TableCell>{item.description}</TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">{formatCurrency(getDisplayUnitPrice(item))}</TableCell>
-                        <TableCell className="text-center">{item.applyTax ? 'Yes' : 'No'}</TableCell>
+                        <TableCell className="text-center print-hide">{item.applyTax ? 'Yes' : 'No'}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(getItemAmount(item))}
                         </TableCell>
@@ -188,16 +188,19 @@ export default function PurchaseOrderPreviewPage() {
                   </TableBody>
                   <TableFooter>
                      <TableRow>
-                         <TableCell colSpan={4} className="text-right font-semibold">Subtotal</TableCell>
-                         <TableCell className="text-right font-bold">{formatCurrency(subtotal)}</TableCell>
+                         <TableCell colSpan={3} className="text-right font-semibold print:col-span-3">Subtotal</TableCell>
+                         <TableCell colSpan={1} className="text-right font-bold print-hide">{formatCurrency(subtotal)}</TableCell>
+                         <TableCell className="text-right font-bold print:col-span-1 print:text-right">{formatCurrency(subtotal)}</TableCell>
                      </TableRow>
                      <TableRow>
-                         <TableCell colSpan={4} className="text-right font-semibold">Withholding Tax (5%)</TableCell>
-                         <TableCell className="text-right font-bold">({formatCurrency(totalTax)})</TableCell>
+                         <TableCell colSpan={3} className="text-right font-semibold print:col-span-3">Withholding Tax (5%)</TableCell>
+                         <TableCell colSpan={1} className="text-right font-bold print-hide">({formatCurrency(totalTax)})</TableCell>
+                         <TableCell className="text-right font-bold print:col-span-1 print:text-right">({formatCurrency(totalTax)})</TableCell>
                      </TableRow>
                      <TableRow className="text-lg">
-                         <TableCell colSpan={4} className="text-right font-bold">Grand Total</TableCell>
-                         <TableCell className="text-right font-bold text-primary">{formatCurrency(grandTotal)}</TableCell>
+                         <TableCell colSpan={3} className="text-right font-bold print:col-span-3">Grand Total</TableCell>
+                         <TableCell colSpan={1} className="text-right font-bold text-primary print-hide">{formatCurrency(grandTotal)}</TableCell>
+                         <TableCell className="text-right font-bold text-primary print:col-span-1 print:text-right">{formatCurrency(grandTotal)}</TableCell>
                      </TableRow>
                   </TableFooter>
                 </Table>
