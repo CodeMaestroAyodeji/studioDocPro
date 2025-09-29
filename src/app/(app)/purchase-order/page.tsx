@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -86,22 +87,30 @@ export default function PurchaseOrderPage() {
   const watchedForm = useWatch({ control: form.control });
   const watchedItems = watchedForm.items || [];
 
+  const getItemAmount = (item: z.infer<typeof poItemSchema>) => {
+      const baseAmount = (item.quantity || 0) * (item.unitPrice || 0);
+      if (item.applyTax) {
+          return baseAmount * (1 + DEFAULT_TAX_RATE / 100);
+      }
+      return baseAmount;
+  }
+  
   const calculateTotals = () => {
-    const preTaxSubtotal = watchedItems.reduce((acc, item) => {
-        return acc + (item.quantity || 0) * (item.unitPrice || 0);
+    const subtotal = watchedItems.reduce((acc, item) => {
+        return acc + getItemAmount(item);
     }, 0);
 
     const totalTax = watchedItems.reduce((acc, item) => {
         if (item.applyTax) {
-            return acc + (item.quantity || 0) * (item.unitPrice || 0) * (DEFAULT_TAX_RATE / 100);
+            const itemTotal = (item.quantity || 0) * (item.unitPrice || 0);
+            return acc + (itemTotal * (DEFAULT_TAX_RATE / 100));
         }
         return acc;
     }, 0);
     
-    const subtotalWithTax = preTaxSubtotal + totalTax;
-    const grandTotal = preTaxSubtotal;
+    const grandTotal = subtotal - totalTax;
 
-    return { subtotal: subtotalWithTax, totalTax, grandTotal };
+    return { subtotal, totalTax, grandTotal };
   };
 
   const { subtotal, totalTax, grandTotal } = calculateTotals();
@@ -135,14 +144,6 @@ export default function PurchaseOrderPage() {
      }
   };
   
-  const getItemAmount = (item: z.infer<typeof poItemSchema>) => {
-      const baseAmount = (item.quantity || 0) * (item.unitPrice || 0);
-      if (item.applyTax) {
-          return baseAmount * (1 + DEFAULT_TAX_RATE / 100);
-      }
-      return baseAmount;
-  }
-
   return (
     <div className="flex flex-1 flex-col">
       <Header title="New Purchase Order" />

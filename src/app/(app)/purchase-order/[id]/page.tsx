@@ -76,31 +76,6 @@ export default function PurchaseOrderPreviewPage() {
   const formattedDate = format(po.date, 'dd/MM/yyyy');
   const signatory1 = companyProfile.signatories.find(s => s.id === po.signatory1);
   const signatory2 = companyProfile.signatories.find(s => s.id === po.signatory2);
-
-  const calculateTotals = () => {
-    if (!po) return { subtotal: 0, totalTax: 0, grandTotal: 0 };
-    
-    let subtotal = 0;
-    let totalTax = 0;
-
-    po.items.forEach(item => {
-        const itemTotal = (item.quantity || 0) * (item.unitPrice || 0);
-        subtotal += itemTotal;
-        if (item.applyTax) {
-            totalTax += itemTotal * (DEFAULT_TAX_RATE / 100);
-        }
-    });
-    
-    const grandTotal = subtotal;
-
-    return { subtotal: subtotal + totalTax, totalTax, grandTotal };
-  };
-
-  const { subtotal, totalTax, grandTotal } = calculateTotals();
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
-  };
   
   const getItemAmount = (item: PurchaseOrder['items'][0]) => {
       const baseAmount = (item.quantity || 0) * (item.unitPrice || 0);
@@ -110,6 +85,30 @@ export default function PurchaseOrderPreviewPage() {
       return baseAmount;
   }
 
+  const calculateTotals = () => {
+    if (!po) return { subtotal: 0, totalTax: 0, grandTotal: 0 };
+    
+    const subtotal = po.items.reduce((acc, item) => acc + getItemAmount(item), 0);
+
+    const totalTax = po.items.reduce((acc, item) => {
+        if (item.applyTax) {
+            const itemTotal = (item.quantity || 0) * (item.unitPrice || 0);
+            return acc + (itemTotal * (DEFAULT_TAX_RATE / 100));
+        }
+        return acc;
+    }, 0);
+    
+    const grandTotal = subtotal - totalTax;
+
+    return { subtotal, totalTax, grandTotal };
+  };
+
+  const { subtotal, totalTax, grandTotal } = calculateTotals();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
+  };
+  
   return (
     <div className="flex flex-1 flex-col">
       <Header title={`Purchase Order ${po.poNumber}`} className="no-print" />
@@ -206,13 +205,13 @@ export default function PurchaseOrderPreviewPage() {
                  <div className="grid grid-cols-2 gap-8 pt-8">
                     <div className="text-center">
                         <div className="h-12"></div>
-                        <div className="border-b border-foreground w-3/4 mx-auto"></div>
+                        <div className="border-b border-foreground w-2/3 mx-auto"></div>
                         <p className="font-semibold mt-2">{signatory1?.name}</p>
                         <p className="text-sm text-muted-foreground">{signatory1?.title}</p>
                     </div>
                     <div className="text-center">
                         <div className="h-12"></div>
-                        <div className="border-b border-foreground w-3/4 mx-auto"></div>
+                        <div className="border-b border-foreground w-2/3 mx-auto"></div>
                         <p className="font-semibold mt-2">{signatory2?.name}</p>
                         <p className="text-sm text-muted-foreground">{signatory2?.title}</p>
                     </div>
@@ -230,3 +229,4 @@ export default function PurchaseOrderPreviewPage() {
     </div>
   );
 }
+
