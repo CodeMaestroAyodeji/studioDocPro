@@ -17,10 +17,10 @@ import { useToast } from '@/hooks/use-toast';
 
 type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
 
-const DetailRow = ({ label, value }: { label: string; value: string | undefined | null }) => (
-    <div className="grid grid-cols-3 gap-2 py-1.5">
+const DetailRow = ({ label, value, valueClassName }: { label: string; value: string | undefined | null, valueClassName?: string }) => (
+    <div className="grid grid-cols-3 gap-1 py-1">
         <span className="font-semibold text-muted-foreground">{label}:</span>
-        <span className="col-span-2">{value}</span>
+        <span className={`col-span-2 ${valueClassName}`}>{value}</span>
     </div>
 );
 
@@ -123,8 +123,8 @@ export default function PaymentVoucherPreviewPage() {
 
           {/* Body */}
           <div className="space-y-4 mb-8">
-             <DetailRow label="Being Payment to" value={voucher.payeeName} />
-             <DetailRow label="For" value={voucher.description} />
+             <DetailRow label="Being Payment to" value={voucher.payeeName} valueClassName="font-bold text-lg" />
+             <DetailRow label="For" value={voucher.description} valueClassName="font-bold text-lg" />
              <div className="py-2">
                 <p className="font-semibold text-muted-foreground">Amount in words:</p>
                 <p className="capitalize">{amountInWords}</p>
