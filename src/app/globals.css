@@ -109,6 +109,14 @@
     box-shadow: none !important;
     border: none !important;
     font-size: 10pt;
+    background-color: white !important;
+  }
+  
+  .payment-voucher-print {
+    background-color: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 15mm !important;
   }
 
   .printable-area h1,
@@ -126,27 +134,26 @@
     color: hsl(var(--primary)) !important;
   }
 
+  /* Hide form elements on print */
   .printable-area input,
   .printable-area textarea,
   .printable-area button,
   .printable-area select,
   .printable-area .flex.items-center.gap-1 > .flex-1,
-  .printable-area .flex.items-center.gap-1 > [role="combobox"],
-  .printable-area form > .flex,
   .printable-area [role="combobox"],
   .printable-area .items-end > button,
-  .printable-area .flex.items-center > button,
+  .printable-aarea .flex.items-center > button,
   .printable-area .flex.items-center > .flex > button,
   .printable-area .flex > .relative > button {
     display: none !important;
   }
 
-  .printable-area .form-item-print-view {
+  .form-item-print-view {
     display: block !important;
     margin-bottom: 0.5rem;
   }
   
-  .printable-area .form-item-print-view .print-label {
+  .form-item-print-view .print-label {
     display: block;
     font-weight: 600;
     color: #4a5568; /* text-muted-foreground approx */
@@ -154,23 +161,39 @@
     margin-bottom: 2px;
   }
   
-  .printable-area .form-item-print-view .print-value {
+  .form-item-print-view .print-value {
     display: block;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #e2e8f0; /* border approx */
-    border-radius: 0.375rem;
-    background-color: #f7fafc; /* muted approx */
+    padding: 0 !important;
+    border: none !important;
+    background-color: transparent !important;
+    min-height: auto !important;
   }
 
-  .printable-area footer > div {
-    padding-top: 2rem !important;
-    border-top: 1px solid black !important;
-    border-style: dashed !important;
+  .payment-voucher-print .form-item-print-view {
+     display: none !important;
+  }
+  
+  .payment-voucher-print header,
+  .payment-voucher-print footer {
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+  }
+  
+  .payment-voucher-print footer > div {
+      padding-top: 0rem !important;
+      border-top: none !important;
   }
 
   .payment-voucher-print .border.rounded-lg {
-    border: 1px solid #e2e8f0 !important;
-    padding: 1rem !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .payment-voucher-print .border-b,
+  .payment-voucher-print .border-t {
+      border-color: black !important;
   }
 }
 
