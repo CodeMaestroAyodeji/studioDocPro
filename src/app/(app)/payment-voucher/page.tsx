@@ -89,6 +89,7 @@ export default function PaymentVoucherPage() {
   const watchedDate = form.watch('date');
   const formattedDate = watchedDate ? format(watchedDate, 'dd/MM/yyyy') : '';
   const amountInWords = numberToWords(form.watch('amount'));
+  const watchedForm = form.watch();
 
   return (
     <div className="flex flex-1 flex-col">
@@ -97,7 +98,7 @@ export default function PaymentVoucherPage() {
         <DocumentToolbar />
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>
-            <DocumentPage>
+            <DocumentPage className="payment-voucher-print">
               <header className="grid grid-cols-2 gap-8 mb-8">
                 <div>
                   {logoPlaceholder && (
@@ -144,11 +145,19 @@ export default function PaymentVoucherPage() {
                           </PopoverContent>
                         </Popover>
                     )} />
+                    <div className="form-item-print-view">
+                      <span className="print-label">Voucher Date</span>
+                      <span className="print-value">{formattedDate}</span>
+                    </div>
                   </div>
                    <div className="space-y-2">
                      <span className="text-sm font-semibold text-muted-foreground">Amount (₦)</span>
                      <FormField control={form.control} name="amount" render={({ field }) => <Input type="number" {...field} className="text-2xl h-12 text-right font-bold" />} />
-                  </div>
+                      <div className="form-item-print-view">
+                        <span className="print-label">Amount (₦)</span>
+                        <span className="print-value">{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(watchedForm.amount)}</span>
+                      </div>
+                   </div>
               </div>
 
                <div className="border rounded-lg p-4 space-y-4 mb-8">
@@ -161,6 +170,10 @@ export default function PaymentVoucherPage() {
                                <AISuggestionButton fieldName="payeeName" form={form} formSchema={voucherSchema} />
                             </div>
                             <FormMessage />
+                            <div className="form-item-print-view">
+                                <span className="print-label">Payee Name</span>
+                                <span className="print-value">{watchedForm.payeeName}</span>
+                            </div>
                           </FormItem>
                         )} />
 
@@ -180,6 +193,10 @@ export default function PaymentVoucherPage() {
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
+                                <div className="form-item-print-view">
+                                    <span className="print-label">Payment Method</span>
+                                    <span className="print-value">{watchedForm.paymentMethod}</span>
+                                </div>
                             </FormItem>
                         )} />
                     </div>
@@ -199,6 +216,10 @@ export default function PaymentVoucherPage() {
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
+                                <div className="form-item-print-view">
+                                    <span className="print-label">From Account</span>
+                                    <span className="print-value">{companyProfile.bankAccounts.find(b => b.id === watchedForm.bankAccountId)?.bankName} - {companyProfile.bankAccounts.find(b => b.id === watchedForm.bankAccountId)?.accountNumber}</span>
+                                </div>
                             </FormItem>
                         )} />
                      <FormField control={form.control} name="description" render={({ field }) => (
@@ -209,6 +230,10 @@ export default function PaymentVoucherPage() {
                                  <AISuggestionButton fieldName="description" form={form} formSchema={voucherSchema} />
                              </div>
                             <FormMessage />
+                             <div className="form-item-print-view">
+                                <span className="print-label">Description of Payment</span>
+                                <span className="print-value">{watchedForm.description}</span>
+                            </div>
                           </FormItem>
                         )} />
                      
@@ -237,6 +262,9 @@ export default function PaymentVoucherPage() {
                             </SelectContent>
                         </Select>
                         <FormMessage />
+                        <div className="form-item-print-view mt-12">
+                           <span className="print-value border-t border-dashed pt-2">{companyProfile.signatories.find(s => s.id === watchedForm.preparedBy)?.name}</span>
+                        </div>
                       </FormItem>
                   )} />
                  <FormField control={form.control} name="approvedBy" render={({ field }) => (
@@ -255,6 +283,9 @@ export default function PaymentVoucherPage() {
                             </SelectContent>
                         </Select>
                         <FormMessage />
+                        <div className="form-item-print-view mt-12">
+                           <span className="print-value border-t border-dashed pt-2">{companyProfile.signatories.find(s => s.id === watchedForm.approvedBy)?.name}</span>
+                        </div>
                       </FormItem>
                   )} />
               </footer>
