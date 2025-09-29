@@ -118,31 +118,21 @@ export default function PaymentVoucherPreviewPage() {
           </header>
 
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8">
-              <div className="space-y-2">
-                 <div className="form-item-print-view" style={{display: 'block'}}>
-                    <span className="print-label">Voucher Date</span>
-                    <span className="print-value">{formattedDate}</span>
-                </div>
+              <div>
+                <span className="print-label">Amount</span>
+                <p className="font-bold text-2xl">{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(voucher.amount)}</p>
               </div>
-               <div className="space-y-2">
-                 <div className="form-item-print-view" style={{display: 'block'}}>
-                    <span className="print-label">Amount (₦)</span>
-                    <span className="print-value">{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(voucher.amount)}</span>
-                </div>
-               </div>
           </div>
 
            <div className="border rounded-lg p-4 space-y-4 mb-8">
-                 <div className="grid md:grid-cols-2 gap-4">
-                    <div className="form-item-print-view" style={{display: 'block'}}>
-                        <span className="print-label">Payee Name</span>
-                        <span className="print-value">{voucher.payeeName}</span>
-                    </div>
-                     <div className="form-item-print-view" style={{display: 'block'}}>
-                        <span className="print-label">Payment Method</span>
-                        <span className="print-value">{voucher.paymentMethod}</span>
-                    </div>
-                 </div>
+                <div className="form-item-print-view" style={{display: 'block'}}>
+                    <span className="print-label">Payee Name</span>
+                    <span className="print-value">{voucher.payeeName}</span>
+                </div>
+                <div className="form-item-print-view" style={{display: 'block'}}>
+                    <span className="print-label">Payment Method</span>
+                    <span className="print-value">{voucher.paymentMethod}</span>
+                </div>
                 <div className="form-item-print-view" style={{display: 'block'}}>
                     <span className="print-label">From Account</span>
                     <span className="print-value">{fromAccount?.bankName} - {fromAccount?.accountNumber}</span>
@@ -160,12 +150,12 @@ export default function PaymentVoucherPreviewPage() {
 
           <Separator className="my-8" />
           
-          <footer className="grid grid-cols-2 gap-8 pt-8">
-             <div className="form-item-print-view mt-12" style={{display: 'block'}}>
+          <footer className="grid grid-cols-2 gap-8 pt-12 mt-12">
+             <div className="form-item-print-view" style={{display: 'block'}}>
                 <p className='text-sm mb-2'>Prepared By</p>
                 <span className="print-value border-t border-dashed pt-2">{preparedBy?.name}</span>
              </div>
-             <div className="form-item-print-view mt-12" style={{display: 'block'}}>
+             <div className="form-item-print-view" style={{display: 'block'}}>
                 <p className='text-sm mb-2'>Approved By</p>
                 <span className="print-value border-t border-dashed pt-2">{approvedBy?.name}</span>
              </div>
