@@ -27,8 +27,18 @@ export type PurchaseOrderItem = {
   description: string;
   quantity: number;
   unitPrice: number;
-  tax: number;
+  applyTax: boolean;
 };
+
+export type PurchaseOrder = {
+    poNumber: string;
+    date: Date;
+    vendor: string;
+    projectName: string;
+    items: PurchaseOrderItem[];
+    signatory1?: string;
+    signatory2?: string;
+}
 
 export type PaymentVoucher = {
   voucherNumber: string;

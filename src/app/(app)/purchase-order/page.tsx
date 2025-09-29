@@ -7,6 +7,7 @@ import * as z from 'zod';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -22,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { getNextPoNumber } from '@/lib/po-sequence';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 
 const poItemSchema = z.object({
@@ -36,6 +38,7 @@ const poSchema = z.object({
   poNumber: z.string().min(1, 'PO Number is required'),
   date: z.date(),
   vendor: z.string().min(1, 'Vendor details are required'),
+  projectName: z.string().min(1, 'Project Name is required'),
   items: z.array(poItemSchema).min(1, 'At least one item is required'),
   signatory1: z.string().optional(),
   signatory2: z.string().optional(),
@@ -45,6 +48,8 @@ const DEFAULT_TAX_RATE = 5; // 5%
 
 export default function PurchaseOrderPage() {
   const { state: companyProfile } = useCompanyProfile();
+  const router = useRouter();
+  const { toast } = useToast();
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
   const [poNumber, setPoNumber] = useState('');
 
@@ -59,6 +64,7 @@ export default function PurchaseOrderPage() {
       poNumber: '',
       date: new Date(),
       vendor: '',
+      projectName: '',
       items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, applyTax: false }],
       signatory1: companyProfile.signatories[0]?.id || '',
       signatory2: companyProfile.signatories[1]?.id || '',
@@ -100,6 +106,28 @@ export default function PurchaseOrderPage() {
   
   const signatory1 = companyProfile.signatories.find(s => s.id === watchedForm.signatory1);
   const signatory2 = companyProfile.signatories.find(s => s.id === watchedForm.signatory2);
+  
+  const handleSubmit = (values: z.infer<typeof poSchema>) => {
+     try {
+        getNextPoNumber(true); // Increment and save the new PO number
+        const poWithDateAsString = {
+            ...values,
+            date: values.date.toISOString(),
+        }
+        localStorage.setItem(`po_${values.poNumber}`, JSON.stringify(poWithDateAsString));
+        toast({
+            title: 'Purchase Order Saved',
+            description: `PO ${values.poNumber} has been saved.`,
+        });
+        router.push(`/purchase-order/${values.poNumber}`);
+     } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error Saving PO',
+            description: 'Could not save the purchase order to local storage.',
+        });
+     }
+  };
 
   return (
     <div className="flex flex-1 flex-col">
@@ -107,7 +135,7 @@ export default function PurchaseOrderPage() {
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
         <DocumentToolbar />
         <Form {...form}>
-          <form>
+          <form onSubmit={form.handleSubmit(handleSubmit)}>
             <DocumentPage>
               <header className="grid grid-cols-2 gap-8 mb-8">
                 <div>
@@ -131,13 +159,23 @@ export default function PurchaseOrderPage() {
                 </div>
               </header>
 
-              <section className="mb-8">
+              <section className="grid md:grid-cols-2 gap-x-8 mb-8">
                 <FormField control={form.control} name="vendor" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-semibold">VENDOR:</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Vendor Name&#10;Vendor Address&#10;Vendor Contact" {...field} className="min-h-[60px]" />
+                      <Textarea placeholder="Vendor Name&#10;Vendor Address&#10;Vendor Contact" {...field} className="min-h-[80px]" />
                     </FormControl>
+                     <FormMessage />
+                  </FormItem>
+                )} />
+                 <FormField control={form.control} name="projectName" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-semibold">PROJECT NAME:</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Office Renovation" {...field} />
+                    </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )} />
               </section>
@@ -279,6 +317,9 @@ export default function PurchaseOrderPage() {
                     </p>
                  </div>
               </footer>
+              <div className="flex justify-end mt-8 no-print">
+                    <Button type="submit">Save Purchase Order</Button>
+               </div>
             </DocumentPage>
           </form>
         </Form>
