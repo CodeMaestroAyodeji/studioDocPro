@@ -44,10 +44,6 @@ export default function PaymentVoucherPage() {
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
   const [voucherNumber, setVoucherNumber] = useState('');
   
-  useEffect(() => {
-    setVoucherNumber(getNextVoucherNumber());
-  }, []);
-
   const form = useForm<z.infer<typeof voucherSchema>>({
     resolver: zodResolver(voucherSchema),
     defaultValues: {
@@ -64,26 +60,35 @@ export default function PaymentVoucherPage() {
   });
 
   useEffect(() => {
-    if (voucherNumber) {
-      form.setValue('voucherNumber', voucherNumber);
-    }
-  }, [voucherNumber, form]);
-  
-  const watchedDate = form.watch('date');
-  const formattedDate = watchedDate ? format(watchedDate, 'dd/MM/yyyy') : '';
-
-  const amountInWords = numberToWords(form.watch('amount'));
+    const nextVoucherNumber = getNextVoucherNumber();
+    setVoucherNumber(nextVoucherNumber);
+    form.setValue('voucherNumber', nextVoucherNumber);
+  }, []);
 
   const handleSubmit = (values: z.infer<typeof voucherSchema>) => {
-     // In a real app, this would save the voucher and increment the sequence.
      console.log(values);
      toast({
         title: 'Voucher Saved (Simulated)',
         description: `Voucher ${values.voucherNumber} has been saved.`,
-     })
-     // For simulation, we'll just get the next number for the next form.
-     setVoucherNumber(getNextVoucherNumber(true));
+     });
+     
+     const nextVoucherNumber = getNextVoucherNumber(true);
+     setVoucherNumber(nextVoucherNumber);
+     form.reset({
+        ...form.getValues(),
+        voucherNumber: nextVoucherNumber,
+        payeeName: '',
+        amount: 0,
+        description: '',
+        date: new Date(),
+        preparedBy: '',
+        approvedBy: '',
+     });
   };
+
+  const watchedDate = form.watch('date');
+  const formattedDate = watchedDate ? format(watchedDate, 'dd/MM/yyyy') : '';
+  const amountInWords = numberToWords(form.watch('amount'));
 
   return (
     <div className="flex flex-1 flex-col">
@@ -153,7 +158,7 @@ export default function PaymentVoucherPage() {
                             <FormLabel>Payee Name</FormLabel>
                             <div className="flex items-center gap-1">
                                <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
-                               <AISuggestionButton fieldName="payeeName" form={form} formSchema={voucherSchema.shape} />
+                               <AISuggestionButton fieldName="payeeName" form={form} formSchema={voucherSchema} />
                             </div>
                             <FormMessage />
                           </FormItem>
@@ -201,7 +206,7 @@ export default function PaymentVoucherPage() {
                             <FormLabel>Description of Payment</FormLabel>
                              <div className="flex items-center gap-1">
                                 <FormControl><Input placeholder="e.g. Payment for invoice #123" {...field} /></FormControl>
-                                 <AISuggestionButton fieldName="description" form={form} formSchema={voucherSchema.shape} />
+                                 <AISuggestionButton fieldName="description" form={form} formSchema={voucherSchema} />
                              </div>
                             <FormMessage />
                           </FormItem>

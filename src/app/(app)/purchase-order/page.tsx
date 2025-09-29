@@ -146,7 +146,7 @@ export default function PurchaseOrderPage() {
                             <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => (
                                 <Input placeholder="Item description" {...field} className="flex-1" />
                             )} />
-                            <AISuggestionButton fieldName={`items.${index}.description`} form={form} formSchema={poSchema.shape.items.element.shape} />
+                            <AISuggestionButton fieldName={`items.${index}.description`} form={form} formSchema={poItemSchema} />
                            </div>
                         </TableCell>
                         <TableCell>
