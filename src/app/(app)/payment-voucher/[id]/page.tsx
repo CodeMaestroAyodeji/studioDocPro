@@ -169,16 +169,18 @@ export default function PaymentVoucherPreviewPage() {
 
 
           {/* Footer */}
-          <footer className="grid grid-cols-2 gap-8 pt-8 mt-8">
+          <footer className="grid grid-cols-2 gap-8 pt-4">
              <div className="text-center">
-                <p className='text-sm font-semibold mt-1'>{preparedBy?.name}</p>
-                <div className="border-b border-foreground w-1/2 mx-auto mt-2 mb-2"></div>
                 <p className='text-sm mt-2'>Prepared By</p>
+                <div className="h-12"></div>
+                <div className="border-b border-foreground w-1/2 mx-auto"></div>
+                <p className='text-sm font-semibold mt-1'>{preparedBy?.name}</p>
              </div>
              <div className="text-center">
-                <p className="text-sm font-semibold mt-1">{approvedBy?.name}</p>
-                <div className="border-b border-foreground w-1/2 mx-auto mt-2 mb-2"></div>
                 <p className='text-sm mt-2'>Approved By</p>
+                <div className="h-12"></div>
+                <div className="border-b border-foreground w-1/2 mx-auto"></div>
+                <p className="text-sm font-semibold mt-1">{approvedBy?.name}</p>
              </div>
           </footer>
         </DocumentPage>
