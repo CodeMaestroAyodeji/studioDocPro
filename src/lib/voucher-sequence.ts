@@ -32,11 +32,14 @@ function saveSequence(sequence: VoucherSequence) {
 
 export function getNextVoucherNumber(increment: boolean = false): string {
   const sequence = getSequence();
-  const nextNumber = sequence.lastNumber + 1;
+  let nextNumber = sequence.lastNumber;
   
   if (increment) {
+     nextNumber++;
      const newSequence = { ...sequence, lastNumber: nextNumber };
      saveSequence(newSequence);
+  } else {
+    nextNumber++;
   }
 
   const year = sequence.year;
@@ -44,5 +47,3 @@ export function getNextVoucherNumber(increment: boolean = false): string {
 
   return `PV-BSL-${year}-${paddedNumber}`;
 }
-
-    

@@ -63,7 +63,7 @@ export default function PaymentVoucherPage() {
     const nextVoucherNumber = getNextVoucherNumber();
     setVoucherNumber(nextVoucherNumber);
     form.setValue('voucherNumber', nextVoucherNumber);
-  }, []);
+  }, [form]);
 
   const handleSubmit = (values: z.infer<typeof voucherSchema>) => {
      console.log(values);
@@ -190,7 +190,7 @@ export default function PaymentVoucherPage() {
                                     <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder={companyProfile.bankAccounts.length === 0 ? "No bank accounts set up" : "Select an account"} />
-                                    </Trigger>
+                                    </SelectTrigger>
                                     </FormControl>
                                     <SelectContent className="no-print">
                                        {companyProfile.bankAccounts.map(acc => (
