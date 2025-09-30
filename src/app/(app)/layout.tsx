@@ -1,7 +1,9 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { CompanyProfileProvider } from '@/contexts/company-profile-context';
 import { useAuth } from '@/contexts/auth-context';
@@ -10,13 +12,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  if (loading) {
-    return <div>Loading...</div>; // Or a proper loading skeleton
-  }
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
 
-  if (!user) {
-    router.push('/login');
-    return null; // or a loading spinner
+  if (loading || !user) {
+    return <div>Loading...</div>; // Or a proper loading skeleton
   }
 
   return (
