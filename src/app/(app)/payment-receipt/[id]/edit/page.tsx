@@ -8,7 +8,7 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { numberToWords } from '@/lib/number-to-words';
 import { Textarea } from '@/components/ui/textarea';
-import type { PaymentReceipt } from '@/lib/types';
+import type { PaymentReceipt, SalesInvoice } from '@/lib/types';
+import { Combobox } from '@/components/ui/combobox';
 
 const receiptSchema = z.object({
   receiptNumber: z.string(),
@@ -42,6 +43,28 @@ const receiptSchema = z.object({
 });
 
 type StoredPaymentReceipt = Omit<PaymentReceipt, 'date'> & { date: string };
+type StoredSalesInvoice = Omit<SalesInvoice, 'date' | 'dueDate'> & { date: string; dueDate: string };
+
+const getInvoices = (): SalesInvoice[] => {
+  if (typeof window === 'undefined') return [];
+  const invoices: SalesInvoice[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('invoice_')) {
+      const item = localStorage.getItem(key);
+      if (item) {
+        const storedInvoice: StoredSalesInvoice = JSON.parse(item);
+        invoices.push({
+            ...storedInvoice,
+            date: new Date(storedInvoice.date),
+            dueDate: new Date(storedInvoice.dueDate),
+        });
+      }
+    }
+  }
+  return invoices.sort((a, b) => b.date.getTime() - a.date.getTime());
+};
+
 
 export default function EditPaymentReceiptPage() {
   const { state: companyProfile } = useCompanyProfile();
@@ -51,6 +74,15 @@ export default function EditPaymentReceiptPage() {
   const receiptId = params.id as string;
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
+  const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
+
+  useEffect(() => {
+    setInvoices(getInvoices());
+  }, []);
+
+  const invoiceOptions = useMemo(() => 
+    invoices.map(inv => ({ label: `${inv.invoiceNumber} - ${inv.billTo}`, value: inv.invoiceNumber })), 
+  [invoices]);
 
   const form = useForm<z.infer<typeof receiptSchema>>({
     resolver: zodResolver(receiptSchema),
@@ -191,12 +223,24 @@ export default function EditPaymentReceiptPage() {
                                 </Select>
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="relatedInvoiceNumber" render={({ field }) => (
-                           <FormItem>
-                               <FormLabel>For Invoice # (Optional)</FormLabel>
-                               <FormControl><Input placeholder="e.g. INV-BSL-2024-0010" {...field} /></FormControl>
-                           </FormItem>
-                        )} />
+                        <FormField
+                            control={form.control}
+                            name="relatedInvoiceNumber"
+                            render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>For Invoice # (Optional)</FormLabel>
+                                <Combobox
+                                    options={invoiceOptions}
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                    placeholder="Select an invoice"
+                                    searchPlaceholder="Search invoices..."
+                                    emptyMessage="No invoices found."
+                                />
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
                     </div>
 
                     <FormField control={form.control} name="paymentType" render={({ field }) => (
