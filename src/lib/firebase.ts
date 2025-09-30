@@ -5,12 +5,12 @@ import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "API_KEY",
-  authDomain: "PROJECT_ID.firebaseapp.com",
-  projectId: "PROJECT_ID",
-  storageBucket: "PROJECT_ID.appspot.com",
-  messagingSenderId: "SENDER_ID",
-  appId: "APP_ID"
+  apiKey: "AIzaSyDUxVKYP3W_39arLLgn2503aK-_NWS0miU",
+  authDomain: "docu-pro-b881d.firebaseapp.com",
+  projectId: "docu-pro-b881d",
+  storageBucket: "docu-pro-b881d.appspot.com",
+  messagingSenderId: "202449295035",
+  appId: "1:202449295035:web:496e033e1f1b31c6f6bb9e"
 };
 
 // Initialize Firebase
