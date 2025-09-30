@@ -23,7 +23,10 @@ export function UserProfileButton() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { state: sidebarState } = useSidebar();
+  
+  // useSidebar is now optional. It will be null if not in a SidebarProvider.
+  const sidebar = useSidebar();
+  const sidebarState = sidebar?.state;
 
   const handleLogout = async () => {
     try {
