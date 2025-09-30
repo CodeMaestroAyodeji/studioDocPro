@@ -30,26 +30,13 @@ function saveSequence(sequence: PoSequence) {
   }
 }
 
-let lastPoNumber: number | null = null;
-let lastPoYear: number | null = null;
-
-
 export function getNextPoNumber(increment: boolean = false): string {
   const sequence = getSequence();
-  let nextNumber = sequence.lastNumber;
-
-  if (lastPoNumber === null || lastPoYear !== sequence.year) {
-    lastPoNumber = sequence.lastNumber;
-    lastPoYear = sequence.year;
-  }
+  let nextNumber = sequence.lastNumber + 1;
   
   if (increment) {
-     lastPoNumber++;
-     const newSequence = { ...sequence, lastNumber: lastPoNumber };
+     const newSequence = { ...sequence, lastNumber: nextNumber };
      saveSequence(newSequence);
-     nextNumber = lastPoNumber;
-  } else {
-    nextNumber = lastPoNumber + 1;
   }
 
   const year = sequence.year;
