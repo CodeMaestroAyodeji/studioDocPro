@@ -8,10 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/header';
 import { Pencil } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { Vendor } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateAvatar } from '@/lib/vendor-utils';
+
+const invoiceTemplates = [
+  { id: 'template-1', name: 'Classic Professional' },
+  { id: 'template-2', name: 'Modern Minimalist' },
+  { id: 'template-3', name: 'Bold & Creative' },
+  { id: 'template-4', name: 'Elegant & Simple' },
+  { id: 'template-5', name: 'Corporate Formal' },
+];
 
 export default function VendorViewPage() {
   const router = useRouter();
@@ -21,17 +29,19 @@ export default function VendorViewPage() {
   const [vendor, setVendor] = useState<Vendor | null>(null);
 
   useEffect(() => {
-    try {
-      const storedVendor = localStorage.getItem(`vendor_${vendorId}`);
-      if (storedVendor) {
-        setVendor(JSON.parse(storedVendor));
-      } else {
-        toast({ variant: 'destructive', title: 'Vendor not found' });
-        router.push('/vendors');
-      }
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error loading vendor' });
-      router.push('/vendors');
+    if (typeof window !== 'undefined') {
+        try {
+            const storedVendor = localStorage.getItem(`vendor_${vendorId}`);
+            if (storedVendor) {
+                setVendor(JSON.parse(storedVendor));
+            } else {
+                toast({ variant: 'destructive', title: 'Vendor not found' });
+                router.push('/vendors');
+            }
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error loading vendor' });
+            router.push('/vendors');
+        }
     }
   }, [vendorId, router, toast]);
 
@@ -42,6 +52,11 @@ export default function VendorViewPage() {
     </div>
   );
   
+  const logoPreview = useMemo(() => {
+    if (!vendor) return '';
+    return vendor.logoUrl || generateAvatar(vendor.companyName);
+  }, [vendor]);
+
   if (!vendor) {
     return (
         <div className="flex flex-1 flex-col">
@@ -51,7 +66,7 @@ export default function VendorViewPage() {
     );
   }
   
-  const logoPreview = vendor.logoUrl || generateAvatar(vendor.companyName);
+  const templateName = invoiceTemplates.find(t => t.id === vendor.invoiceTemplate)?.name || 'Unknown Template';
 
   return (
     <div className="flex flex-1 flex-col">
@@ -113,7 +128,7 @@ export default function VendorViewPage() {
                 <CardTitle>Settings</CardTitle>
             </CardHeader>
             <CardContent>
-                <DetailItem label="Assigned Invoice Template" value={`Template: ${vendor.invoiceTemplate.split('-')[1]}`} />
+                <DetailItem label="Assigned Invoice Template" value={templateName} />
             </CardContent>
             </Card>
         </div>
@@ -121,4 +136,3 @@ export default function VendorViewPage() {
     </div>
   );
 }
-

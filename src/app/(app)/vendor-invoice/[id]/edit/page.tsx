@@ -21,7 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import type { VendorInvoice, Vendor } from '@/lib/types';
+import type { VendorInvoice, Vendor, VendorInvoiceItem } from '@/lib/types';
 import { getVendors } from '@/lib/vendor-utils';
 import { Combobox } from '@/components/ui/combobox';
 import { InvoiceTemplate1 } from '@/components/vendor-invoice-templates/template-1';
@@ -85,10 +85,17 @@ export default function EditVendorInvoicePage() {
       const storedInvoice = localStorage.getItem(`vendor_invoice_${invoiceId}`);
       if (storedInvoice) {
         const parsed: StoredVendorInvoice = JSON.parse(storedInvoice);
+        // Ensure items have default values for optional fields
+        const itemsWithDefaults = parsed.items.map(item => ({
+            ...item,
+            discount: item.discount || 0,
+            tax: item.tax || false
+        }));
         const invoiceData: VendorInvoice = {
           ...parsed,
           invoiceDate: new Date(parsed.invoiceDate),
           dueDate: new Date(parsed.dueDate),
+          items: itemsWithDefaults,
         };
         setInvoice(invoiceData);
         form.reset(invoiceData);
@@ -114,7 +121,7 @@ export default function EditVendorInvoicePage() {
     let totalDiscount = 0;
     let totalTax = 0;
 
-    (watchedItems || []).forEach(item => {
+    (watchedItems || []).forEach((item: VendorInvoiceItem) => {
       const amount = (item.quantity || 0) * (item.rate || 0);
       const discount = item.discount || 0;
       subtotal += amount;
@@ -160,7 +167,7 @@ export default function EditVendorInvoicePage() {
     
     const templateProps = {
       vendor: selectedVendor,
-      invoice: form.getValues(),
+      invoice: form.getValues() as VendorInvoice,
       companyProfile,
       isEditing: true,
       form,

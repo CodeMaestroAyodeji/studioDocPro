@@ -3,7 +3,7 @@
 
 import { DocumentList } from '@/components/document-list';
 import { Header } from '@/components/header';
-import type { VendorInvoice, Vendor } from '@/lib/types';
+import type { VendorInvoice, Vendor, VendorInvoiceItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
@@ -13,13 +13,34 @@ import { useState, useEffect } from 'react';
 
 type StoredVendorInvoice = Omit<VendorInvoice, 'invoiceDate' | 'dueDate'> & { invoiceDate: string; dueDate: string };
 
-const getVendorInvoices = (): (VendorInvoice & { vendorName?: string })[] => {
+const TAX_RATE = 7.5; // 7.5% VAT
+
+const calculateGrandTotal = (items: VendorInvoiceItem[]): number => {
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let totalTax = 0;
+
+    items.forEach(item => {
+      const amount = (item.quantity || 0) * (item.rate || 0);
+      const discount = item.discount || 0;
+      subtotal += amount;
+      totalDiscount += discount;
+      if (item.tax) {
+        totalTax += (amount - discount) * (TAX_RATE / 100);
+      }
+    });
+
+    return subtotal - totalDiscount + totalTax;
+};
+
+
+const getVendorInvoices = (): (VendorInvoice & { vendorName?: string; grandTotal?: number })[] => {
   if (typeof window === 'undefined') return [];
   
   const vendors = getVendors();
   const vendorMap = new Map(vendors.map(v => [v.id, v.companyName]));
   
-  const invoices: (VendorInvoice & { vendorName?: string })[] = [];
+  const invoices: (VendorInvoice & { vendorName?: string, grandTotal?: number })[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key?.startsWith('vendor_invoice_')) {
@@ -31,6 +52,7 @@ const getVendorInvoices = (): (VendorInvoice & { vendorName?: string })[] => {
             invoiceDate: new Date(storedInvoice.invoiceDate),
             dueDate: new Date(storedInvoice.dueDate),
             vendorName: vendorMap.get(storedInvoice.vendorId) || 'Unknown Vendor',
+            grandTotal: calculateGrandTotal(storedInvoice.items),
         });
       }
     }
@@ -51,9 +73,9 @@ export default function VendorInvoiceListPage() {
         cell: (value: Date) => format(value, 'dd/MM/yyyy'),
     },
     { 
-        accessor: 'dueDate', 
-        header: 'Due Date',
-        cell: (value: Date) => format(value, 'dd/MM/yyyy'),
+        accessor: 'grandTotal', 
+        header: 'Amount',
+        cell: (value: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value || 0),
     },
   ];
   
@@ -81,4 +103,3 @@ export default function VendorInvoiceListPage() {
     </div>
   );
 }
-

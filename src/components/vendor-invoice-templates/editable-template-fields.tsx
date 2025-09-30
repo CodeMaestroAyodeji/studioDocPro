@@ -18,7 +18,7 @@ export function EditableTemplateFields({ form, watchedItems, fields, append, rem
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[35%]">Description</TableHead>
+            <TableHead className="w-[35%] min-w-[200px]">Description</TableHead>
             <TableHead>Qty</TableHead>
             <TableHead>Rate</TableHead>
             <TableHead>Discount</TableHead>

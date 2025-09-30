@@ -4,7 +4,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 
@@ -15,9 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Header } from '@/components/header';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import type { Vendor } from '@/lib/types';
+import type { Vendor, VendorInvoice } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateAvatar } from '@/lib/vendor-utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 const vendorSchema = z.object({
   id: z.string(),
@@ -50,6 +52,7 @@ export default function EditVendorPage() {
   const vendorId = params.id as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [vendor, setVendor] = useState<Vendor | null>(null);
+  const [isTiedToInvoice, setIsTiedToInvoice] = useState(false);
   
   const form = useForm<z.infer<typeof vendorSchema>>({
     resolver: zodResolver(vendorSchema),
@@ -62,6 +65,21 @@ export default function EditVendorPage() {
         const parsed: Vendor = JSON.parse(storedVendor);
         setVendor(parsed);
         form.reset(parsed);
+
+        // Check for associated invoices
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key?.startsWith('vendor_invoice_')) {
+            const item = localStorage.getItem(key);
+            if (item) {
+              const invoice: VendorInvoice = JSON.parse(item);
+              if (invoice.vendorId === vendorId) {
+                setIsTiedToInvoice(true);
+                break;
+              }
+            }
+          }
+        }
       } else {
         toast({ variant: 'destructive', title: 'Vendor not found' });
         router.push('/vendors');
@@ -103,7 +121,12 @@ export default function EditVendorPage() {
   const logoUrl = form.watch('logoUrl');
   const companyName = form.watch('companyName');
 
-  const logoPreview = logoUrl || (companyName ? generateAvatar(companyName) : '');
+  const logoPreview = useMemo(() => {
+      if (logoUrl) return logoUrl;
+      if (companyName) return generateAvatar(companyName);
+      return '';
+  }, [logoUrl, companyName]);
+
 
   if (!vendor) {
     return (
@@ -173,10 +196,20 @@ export default function EditVendorPage() {
                             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                             <Button variant="outline" type="button" onClick={handleLogoUploadClick}>Upload Logo</Button>
                         </div>
+                        
+                        {isTiedToInvoice && (
+                            <Alert>
+                                <Info className="h-4 w-4" />
+                                <AlertTitle>Template Locked</AlertTitle>
+                                <AlertDescription>
+                                    This vendor's invoice template cannot be changed because they are already linked to existing invoices.
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         <FormField control={form.control} name="invoiceTemplate" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Invoice Template</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isTiedToInvoice}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Select a template" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {invoiceTemplates.map(template => (
@@ -186,7 +219,7 @@ export default function EditVendorPage() {
                             </Select>
                             <FormMessage />
                         </FormItem>
-                    )} />
+                        )} />
                     </CardContent>
                 </Card>
 

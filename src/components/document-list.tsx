@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, getMonth, getYear, parse } from 'date-fns';
-import { Eye, Trash2, Search, X } from 'lucide-react';
+import { Eye, Trash2, Search, X, Info } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
 
 type Column = {
   accessor: string;
@@ -28,6 +29,8 @@ type DocumentListProps<T extends { id?: string; date?: Date }> = {
   viewUrlPrefix: string;
   itemIdentifier?: keyof T;
   enableDateFilter?: boolean;
+  isDeletableCheck?: (itemId: string) => boolean;
+  deleteDisabledMessage?: string;
 };
 
 export function DocumentList<T extends { id?: string; date?: Date, poNumber?: string, voucherNumber?: string, invoiceNumber?: string, receiptNumber?: string }>({
@@ -38,6 +41,8 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
   viewUrlPrefix,
   itemIdentifier = "id",
   enableDateFilter = true,
+  isDeletableCheck,
+  deleteDisabledMessage = "This item cannot be deleted.",
 }: DocumentListProps<T>) {
   const router = useRouter();
   const { toast } = useToast();
@@ -60,12 +65,17 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
       );
     }
 
-    if (enableDateFilter && selectedMonth !== 'all') {
+    if (enableDateFilter && selectedMonth !== 'all' && documents.every(d => d.date)) {
       const [month, year] = selectedMonth.split('-').map(Number);
       filtered = filtered.filter(doc => {
         if (!doc.date) return false;
-        const docDate = new Date(doc.date);
-        return getMonth(docDate) === month && getYear(docDate) === year;
+        try {
+            const docDate = new Date(doc.date);
+            if (isNaN(docDate.getTime())) return false;
+            return getMonth(docDate) === month && getYear(docDate) === year;
+        } catch (e) {
+            return false;
+        }
       });
     }
 
@@ -73,17 +83,21 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
   }, [documents, searchTerm, selectedMonth, searchFields, enableDateFilter]);
   
   const monthOptions = useMemo(() => {
-    if (!enableDateFilter) return [];
+    if (!enableDateFilter || !documents.every(d => d.date)) return [];
     const options = new Map<string, string>();
     documents.forEach(doc => {
       if (doc.date) {
-        const docDate = new Date(doc.date);
-        if (!isNaN(docDate.getTime())) {
-          const monthYearKey = `${getMonth(docDate)}-${getYear(docDate)}`;
-          const monthYearLabel = format(docDate, 'MMMM yyyy');
-          if (!options.has(monthYearKey)) {
-            options.set(monthYearKey, monthYearLabel);
-          }
+        try {
+            const docDate = new Date(doc.date);
+            if (!isNaN(docDate.getTime())) {
+            const monthYearKey = `${getMonth(docDate)}-${getYear(docDate)}`;
+            const monthYearLabel = format(docDate, 'MMMM yyyy');
+            if (!options.has(monthYearKey)) {
+                options.set(monthYearKey, monthYearLabel);
+            }
+            }
+        } catch (e) {
+            // ignore invalid dates
         }
       }
     });
@@ -91,7 +105,7 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
   }, [documents, enableDateFilter]);
 
   const handleDelete = (doc: T) => {
-    const docId = doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber || doc.receiptNumber;
+    const docId = getDocId(doc);
     if (docId) {
       localStorage.removeItem(`${storageKeyPrefix}${docId}`);
       setDocuments(dataFetcher());
@@ -112,11 +126,11 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
     if (column.cell) {
       return column.cell(value);
     }
-    return <>{value}</>;
+    return <>{String(value || '')}</>;
   };
 
-  const getDocId = (doc: T) => {
-    return doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber || doc.receiptNumber;
+  const getDocId = (doc: T): string => {
+    return String(doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber || doc.receiptNumber || '');
   }
   
   return (
@@ -134,7 +148,7 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                {enableDateFilter && (
+                {enableDateFilter && monthOptions.length > 0 && (
                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                         <SelectTrigger className="w-full sm:w-[180px]">
                             <SelectValue placeholder="Filter by month" />
@@ -159,6 +173,7 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
 
       <Card>
          <CardContent className="p-0">
+         <TooltipProvider>
             <Table>
                 <TableHeader>
                 <TableRow>
@@ -170,37 +185,58 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
                 </TableHeader>
                 <TableBody>
                 {filteredDocuments.length > 0 ? (
-                    filteredDocuments.map((doc, index) => (
-                    <TableRow key={getDocId(doc) || index}>
-                        {columns.map((col) => (
-                        <TableCell key={col.accessor}>{renderCell(doc, col)}</TableCell>
-                        ))}
-                        <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" onClick={() => router.push(`${viewUrlPrefix}${getDocId(doc)}`)}>
-                                <Eye className="h-4 w-4" />
-                            </Button>
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                        <Trash2 className="h-4 w-4" />
+                    filteredDocuments.map((doc, index) => {
+                        const docId = getDocId(doc);
+                        const isDeletionDisabled = isDeletableCheck ? isDeletableCheck(docId) : false;
+
+                        return (
+                            <TableRow key={docId || index}>
+                                {columns.map((col) => (
+                                <TableCell key={col.accessor}>{renderCell(doc, col)}</TableCell>
+                                ))}
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => router.push(`${viewUrlPrefix}${getDocId(doc)}`)}>
+                                        <Eye className="h-4 w-4" />
                                     </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the document.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(doc)}>Delete</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </TableCell>
-                    </TableRow>
-                    ))
+                                    
+                                    {isDeletionDisabled ? (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span tabIndex={0}>
+                                                    <Button variant="ghost" size="icon" disabled>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>{deleteDisabledMessage}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    ) : (
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete the document.
+                                                </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDelete(doc)}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        )
+                    })
                 ) : (
                     <TableRow>
                     <TableCell colSpan={columns.length + 1} className="h-24 text-center">
@@ -210,6 +246,7 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
                 )}
                 </TableBody>
             </Table>
+            </TooltipProvider>
          </CardContent>
       </Card>
     </div>
