@@ -87,12 +87,19 @@ export default function PurchaseOrderPage() {
   const watchedForm = useWatch({ control: form.control });
   const watchedItems = watchedForm.items || [];
 
+  const getDisplayUnitPrice = (item: z.infer<typeof poItemSchema>) => {
+    if (!item) return 0;
+    const unitPrice = item.unitPrice || 0;
+    if (item.applyTax) {
+      return unitPrice * (1 + DEFAULT_TAX_RATE / 100);
+    }
+    return unitPrice;
+  }
+
   const getItemAmount = (item: z.infer<typeof poItemSchema>) => {
-      const baseAmount = (item.quantity || 0) * (item.unitPrice || 0);
-      if (item.applyTax) {
-          return baseAmount * (1 + DEFAULT_TAX_RATE / 100);
-      }
-      return baseAmount;
+      if (!item) return 0;
+      const displayUnitPrice = getDisplayUnitPrice(item);
+      return (item.quantity || 0) * displayUnitPrice;
   }
   
   const calculateTotals = () => {
@@ -101,7 +108,7 @@ export default function PurchaseOrderPage() {
     }, 0);
 
     const totalTax = watchedItems.reduce((acc, item) => {
-        if (item.applyTax) {
+        if (item?.applyTax) {
             const itemTotal = (item.quantity || 0) * (item.unitPrice || 0);
             return acc + (itemTotal * (DEFAULT_TAX_RATE / 100));
         }
