@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -15,34 +14,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 
-const loginSchema = z.object({
+const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const form = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<z.infer<typeof forgotPasswordSchema>>({
+    resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
       email: '',
-      password: '',
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+  const onSubmit = async (values: z.infer<typeof forgotPasswordSchema>) => {
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      await sendPasswordResetEmail(auth, values.email);
       toast({
-        title: 'Login Successful',
-        description: 'Welcome back!',
+        title: 'Reset Link Sent',
+        description: 'Please check your email for a link to reset your password.',
       });
-      router.push('/purchase-order');
+      router.push('/login');
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
+        title: 'Error Sending Email',
         description: error.message,
       });
     }
@@ -51,8 +48,10 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Welcome Back</CardTitle>
-        <CardDescription>Enter your credentials to access your account.</CardDescription>
+        <CardTitle>Forgot Password</CardTitle>
+        <CardDescription>
+          Enter your email and we&apos;ll send you a link to reset your password.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -70,36 +69,15 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center">
-                    <FormLabel>Password</FormLabel>
-                    <Link
-                      href="/forgot-password"
-                      className="ml-auto inline-block text-sm underline"
-                    >
-                      Forgot your password?
-                    </Link>
-                  </div>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Signing In...' : 'Sign In'}
+              {form.formState.isSubmitting ? 'Sending...' : 'Send Reset Link'}
             </Button>
           </form>
         </Form>
         <div className="mt-4 text-center text-sm">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="underline">
-            Sign up
+          Remembered your password?{' '}
+          <Link href="/login" className="underline">
+            Log in
           </Link>
         </div>
       </CardContent>
