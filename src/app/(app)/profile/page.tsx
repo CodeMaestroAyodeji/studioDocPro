@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -50,7 +51,10 @@ export default function ProfilePage() {
   
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
-    defaultValues: state,
+    defaultValues: {
+      ...state,
+      tin: state.tin || '',
+    },
   });
 
   const { fields: signatoryFields, append: appendSignatory, remove: removeSignatory } = useFieldArray({
@@ -64,7 +68,10 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    form.reset(state);
+    form.reset({
+      ...state,
+      tin: state.tin || '',
+    });
   }, [state, form]);
 
   const onSubmit = (values: z.infer<typeof profileSchema>) => {
