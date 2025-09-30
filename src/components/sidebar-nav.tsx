@@ -2,7 +2,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Building2, Newspaper, Receipt, ReceiptText, HandCoins } from 'lucide-react';
+import { Building2, Newspaper, Receipt, ReceiptText, HandCoins, Users } from 'lucide-react';
 import Link from 'next/link';
 
 import {
@@ -31,6 +31,11 @@ const links = [
     href: '/payment-receipt',
     label: 'Payment Receipts',
     icon: HandCoins,
+  },
+    {
+    href: '/vendor-invoice',
+    label: 'Vendor Invoices',
+    icon: Users,
   },
   {
     href: '/profile',

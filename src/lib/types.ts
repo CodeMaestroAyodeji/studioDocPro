@@ -91,3 +91,39 @@ export type PaymentReceipt = {
     totalAmount?: number;
     amountDue?: number;
 };
+
+export type Vendor = {
+  id: string;
+  companyName: string;
+  contactName: string;
+  address: string;
+  phone: string;
+  email?: string;
+  website?: string;
+  tin?: string;
+  logoUrl?: string;
+  invoiceTemplate: string;
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+};
+
+export type VendorInvoiceItem = {
+  id: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  discount: number;
+  tax: boolean;
+};
+
+export type VendorInvoice = {
+  id: string;
+  vendorId: string;
+  projectName: string;
+  invoiceNumber: string;
+  invoiceDate: Date;
+  dueDate: Date;
+  items: VendorInvoiceItem[];
+  notes?: string;
+};
