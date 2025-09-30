@@ -20,9 +20,9 @@ import { Separator } from '@/components/ui/separator';
 type StoredPaymentReceipt = Omit<PaymentReceipt, 'date'> & { date: string };
 
 const DetailRow = ({ label, value }: { label: string; value: string | number | undefined | null }) => (
-    <div className="flex justify-between items-start py-1">
+    <div className="flex items-start py-1">
         <p className="text-sm text-muted-foreground font-semibold whitespace-nowrap mr-2">{label}:</p>
-        <p className="font-medium text-right break-words">{value || '-'}</p>
+        <p className="font-medium text-left break-words">{value || '-'}</p>
     </div>
 );
 
