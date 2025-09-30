@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Building2, Newspaper, Receipt } from 'lucide-react';
+import { Building2, Newspaper, Receipt, ReceiptText } from 'lucide-react';
 import Link from 'next/link';
 
 import {
@@ -20,6 +20,11 @@ const links = [
     href: '/payment-voucher',
     label: 'Payment Vouchers',
     icon: Receipt,
+  },
+  {
+    href: '/sales-invoice',
+    label: 'Sales Invoices',
+    icon: ReceiptText,
   },
   {
     href: '/profile',

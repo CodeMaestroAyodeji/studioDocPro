@@ -26,14 +26,16 @@ type DocumentListProps<T extends { id?: string; date: Date }> = {
   searchFields: (keyof T)[];
   storageKeyPrefix: string;
   viewUrlPrefix: string;
+  itemIdentifier?: keyof T;
 };
 
-export function DocumentList<T extends { id?: string; date: Date, poNumber?: string, voucherNumber?: string }>({
+export function DocumentList<T extends { id?: string; date: Date, poNumber?: string, voucherNumber?: string, invoiceNumber?: string }>({
   columns,
   dataFetcher,
   searchFields,
   storageKeyPrefix,
   viewUrlPrefix,
+  itemIdentifier = "id",
 }: DocumentListProps<T>) {
   const router = useRouter();
   const { toast } = useToast();
@@ -81,7 +83,7 @@ export function DocumentList<T extends { id?: string; date: Date, poNumber?: str
   }, [documents]);
 
   const handleDelete = (doc: T) => {
-    const docId = doc.poNumber || doc.voucherNumber;
+    const docId = doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber;
     if (docId) {
       localStorage.removeItem(`${storageKeyPrefix}${docId}`);
       setDocuments(dataFetcher());
@@ -104,6 +106,10 @@ export function DocumentList<T extends { id?: string; date: Date, poNumber?: str
     }
     return <>{value}</>;
   };
+
+  const getDocId = (doc: T) => {
+    return doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber;
+  }
   
   return (
     <div className="space-y-4">
@@ -155,12 +161,12 @@ export function DocumentList<T extends { id?: string; date: Date, poNumber?: str
                 <TableBody>
                 {filteredDocuments.length > 0 ? (
                     filteredDocuments.map((doc, index) => (
-                    <TableRow key={doc.id || doc.poNumber || doc.voucherNumber || index}>
+                    <TableRow key={getDocId(doc) || index}>
                         {columns.map((col) => (
                         <TableCell key={col.accessor}>{renderCell(doc, col)}</TableCell>
                         ))}
                         <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" onClick={() => router.push(`${viewUrlPrefix}${doc.poNumber || doc.voucherNumber}`)}>
+                            <Button variant="ghost" size="icon" onClick={() => router.push(`${viewUrlPrefix}${getDocId(doc)}`)}>
                                 <Eye className="h-4 w-4" />
                             </Button>
                              <AlertDialog>

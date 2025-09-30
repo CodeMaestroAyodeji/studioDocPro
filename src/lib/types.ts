@@ -54,3 +54,21 @@ export type PaymentVoucher = {
   payeeAccountName?: string;
   payeeAccountNumber?: string;
 };
+
+export type SalesInvoiceItem = {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+export type SalesInvoice = {
+  invoiceNumber: string;
+  date: Date;
+  dueDate: Date;
+  billTo: string;
+  items: SalesInvoiceItem[];
+  notes: string;
+  applyVat: boolean;
+  paymentAccountId: string;
+};
