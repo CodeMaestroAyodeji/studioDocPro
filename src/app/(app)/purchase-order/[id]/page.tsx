@@ -188,19 +188,16 @@ export default function PurchaseOrderPreviewPage() {
                   </TableBody>
                   <TableFooter>
                      <TableRow>
-                         <TableCell colSpan={3} className="text-right font-semibold print:col-span-3">Subtotal</TableCell>
-                         <TableCell colSpan={1} className="text-right font-bold print-hide">{formatCurrency(subtotal)}</TableCell>
-                         <TableCell className="text-right font-bold print:col-span-1 print:text-right">{formatCurrency(subtotal)}</TableCell>
+                         <TableCell colSpan={4} className="text-right font-semibold">Subtotal</TableCell>
+                         <TableCell className="text-right font-bold">{formatCurrency(subtotal)}</TableCell>
                      </TableRow>
                      <TableRow>
-                         <TableCell colSpan={3} className="text-right font-semibold print:col-span-3">Withholding Tax (5%)</TableCell>
-                         <TableCell colSpan={1} className="text-right font-bold print-hide">({formatCurrency(totalTax)})</TableCell>
-                         <TableCell className="text-right font-bold print:col-span-1 print:text-right">({formatCurrency(totalTax)})</TableCell>
+                         <TableCell colSpan={4} className="text-right font-semibold">Withholding Tax (5%)</TableCell>
+                         <TableCell className="text-right font-bold">({formatCurrency(totalTax)})</TableCell>
                      </TableRow>
                      <TableRow className="text-lg">
-                         <TableCell colSpan={3} className="text-right font-bold print:col-span-3">Grand Total</TableCell>
-                         <TableCell colSpan={1} className="text-right font-bold text-primary print-hide">{formatCurrency(grandTotal)}</TableCell>
-                         <TableCell className="text-right font-bold text-primary print:col-span-1 print:text-right">{formatCurrency(grandTotal)}</TableCell>
+                         <TableCell colSpan={4} className="text-right font-bold">Grand Total</TableCell>
+                         <TableCell className="text-right font-bold text-primary">{formatCurrency(grandTotal)}</TableCell>
                      </TableRow>
                   </TableFooter>
                 </Table>
