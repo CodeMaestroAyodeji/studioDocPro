@@ -4,11 +4,14 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { AppUser } from '@/lib/types';
 
 type AuthContextType = {
   user: User | null;
+  appUser: AppUser | null;
   loading: boolean;
 };
 
@@ -16,11 +19,26 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      if (user) {
+        // Fetch user profile from Firestore
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          setAppUser(userDoc.data() as AppUser);
+        } else {
+            // This case might happen if user was created before firestore profile was implemented
+            // Or if there's a delay. We can set a default or handle as an error.
+            setAppUser(null);
+        }
+      } else {
+        setAppUser(null);
+      }
       setLoading(false);
     });
 
@@ -40,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, appUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

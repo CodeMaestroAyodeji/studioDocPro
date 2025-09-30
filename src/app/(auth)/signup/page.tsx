@@ -7,13 +7,16 @@ import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import Link from 'next/link';
+import { doc, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import type { AppUser } from '@/lib/types';
+
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
@@ -36,7 +39,17 @@ export default function SignupPage() {
   const onSubmit = async (values: z.infer<typeof signupSchema>) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      await updateProfile(userCredential.user, { displayName: values.name });
+      const { user } = userCredential;
+      await updateProfile(user, { displayName: values.name });
+
+      // Create user profile in Firestore
+      const userProfile: AppUser = {
+        uid: user.uid,
+        email: user.email!,
+        name: values.name,
+        role: 'Project Manager', // Default role
+      };
+      await setDoc(doc(db, 'users', user.uid), userProfile);
       
       toast({
         title: 'Account Created',

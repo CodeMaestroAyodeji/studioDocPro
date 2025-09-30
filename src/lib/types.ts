@@ -1,5 +1,6 @@
 
 
+
 export type Signatory = {
   id: string;
   name: string;
@@ -129,3 +130,11 @@ export type VendorInvoice = {
   notes?: string;
 };
 
+export type UserRole = 'Admin' | 'Accountant' | 'Project Manager';
+
+export type AppUser = {
+    uid: string;
+    email: string;
+    name: string;
+    role: UserRole;
+};
