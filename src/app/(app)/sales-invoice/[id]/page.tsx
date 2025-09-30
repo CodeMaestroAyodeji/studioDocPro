@@ -73,6 +73,8 @@ export default function SalesInvoicePreviewPage() {
   }
   
   const paymentAccount = companyProfile.bankAccounts.find(acc => acc.id === invoice.paymentAccountId);
+  const signatory1 = companyProfile.signatories.find(s => s.id === invoice.signatory1);
+  const signatory2 = companyProfile.signatories.find(s => s.id === invoice.signatory2);
 
   const calculateTotals = () => {
     const subtotal = invoice.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
@@ -209,12 +211,14 @@ export default function SalesInvoicePreviewPage() {
                     <div className="text-center">
                         <div className="h-12"></div>
                         <div className="border-b border-foreground w-2/3 mx-auto"></div>
-                        <p className="text-sm font-semibold mt-2">Authorized Signatory</p>
+                        <p className="font-semibold mt-2">{signatory1?.name}</p>
+                        <p className="text-sm text-muted-foreground">{signatory1?.title}</p>
                     </div>
                     <div className="text-center">
                         <div className="h-12"></div>
                         <div className="border-b border-foreground w-2/3 mx-auto"></div>
-                        <p className="text-sm font-semibold mt-2">Authorized Signatory</p>
+                        <p className="font-semibold mt-2">{signatory2?.name}</p>
+                        <p className="text-sm text-muted-foreground">{signatory2?.title}</p>
                     </div>
                  </div>
                  <div className="text-center text-xs text-muted-foreground pt-12">

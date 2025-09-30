@@ -72,4 +72,6 @@ export type SalesInvoice = {
   notes: string;
   applyVat: boolean;
   paymentAccountId: string;
+  signatory1?: string;
+  signatory2?: string;
 };

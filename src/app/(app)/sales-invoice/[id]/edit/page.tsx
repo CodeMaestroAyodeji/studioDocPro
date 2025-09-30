@@ -43,6 +43,8 @@ const invoiceSchema = z.object({
   notes: z.string().optional(),
   applyVat: z.boolean(),
   paymentAccountId: z.string().min(1, 'Please select a payment account'),
+  signatory1: z.string().optional(),
+  signatory2: z.string().optional(),
 });
 
 type StoredSalesInvoice = Omit<SalesInvoice, 'date' | 'dueDate'> & { date: string, dueDate: string };
@@ -264,8 +266,50 @@ export default function EditSalesInvoicePage() {
                 </div>
               </section>
 
-              <footer className="text-center text-xs text-muted-foreground pt-12">
-                 <p>{companyProfile.phone} | {companyProfile.email} | {companyProfile.website}</p>
+              <Separator className="my-8" />
+
+              <footer className="space-y-4">
+                 <div className="grid grid-cols-2 gap-8 pt-8">
+                    <FormField control={form.control} name="signatory1" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Authorized Signatory 1</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {companyProfile.signatories.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                     <FormField control={form.control} name="signatory2" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Authorized Signatory 2</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {companyProfile.signatories.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                 </div>
+                 <div className="text-center text-xs text-muted-foreground pt-12">
+                    <p>{companyProfile.phone} | {companyProfile.email} | {companyProfile.website}</p>
+                 </div>
               </footer>
             </DocumentPage>
           </form>
