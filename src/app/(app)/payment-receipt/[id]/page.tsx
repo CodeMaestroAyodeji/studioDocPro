@@ -20,9 +20,9 @@ import { Separator } from '@/components/ui/separator';
 type StoredPaymentReceipt = Omit<PaymentReceipt, 'date'> & { date: string };
 
 const DetailRow = ({ label, value }: { label: string; value: string | number | undefined | null }) => (
-    <div>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="font-semibold">{value || '-'}</p>
+    <div className="grid grid-cols-2 gap-4 items-start py-2">
+        <p className="text-sm text-muted-foreground font-semibold">{label}</p>
+        <p className="font-medium">{value || '-'}</p>
     </div>
 );
 
@@ -108,30 +108,35 @@ export default function PaymentReceiptPreviewPage() {
 
               <Separator className="my-8"/>
 
-              <div className="space-y-4 mb-8">
-                <p className="text-muted-foreground">Received from:</p>
-                <p className="text-2xl font-semibold">{receipt.receivedFrom}</p>
-              </div>
+              <div className="space-y-6 mb-12 text-base">
+                 <div className="flex items-baseline gap-2">
+                    <p className="text-muted-foreground">Received from:</p>
+                    <p className="font-semibold border-b border-dashed flex-1 pb-1">{receipt.receivedFrom}</p>
+                    <p className="text-muted-foreground">the sum of</p>
+                    <p className="font-semibold border-b border-dashed flex-1 pb-1">{formatCurrency(receipt.amountReceived)}</p>
+                 </div>
+                 
+                 <div className="flex items-baseline gap-2">
+                    <p className="text-muted-foreground">Amount in Words:</p>
+                    <p className="font-semibold capitalize border-b border-dashed flex-1 pb-1">{amountInWords}</p>
+                 </div>
 
-               <div className="space-y-4 mb-12">
-                <p className="text-muted-foreground">The sum of:</p>
-                <p className="text-xl font-semibold capitalize">{amountInWords}</p>
-              </div>
+                <div className="flex items-baseline gap-2">
+                    <p className="text-muted-foreground">Being payment for:</p>
+                    <p className="font-semibold border-b border-dashed flex-1 pb-1">{receipt.notes || '-'}</p>
+                 </div>
 
-              <div className="bg-muted/50 rounded-lg p-6 mb-12">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2 space-y-4">
-                         <DetailRow label="Payment For" value={receipt.notes} />
-                         <DetailRow label="Payment Method" value={receipt.paymentMethod} />
-                         <DetailRow label="Related Invoice #" value={receipt.relatedInvoiceNumber} />
-                         <DetailRow label="Payment Type" value={receipt.paymentType} />
+                 <div className="grid grid-cols-2 gap-x-8 gap-y-2 pt-6">
+                    <DetailRow label="Payment Method" value={receipt.paymentMethod} />
+                    <DetailRow label="Related Invoice #" value={receipt.relatedInvoiceNumber} />
+                    <DetailRow label="Payment Type" value={receipt.paymentType} />
+                    <div className="col-span-2 bg-primary/10 p-4 rounded-md text-center mt-4">
+                        <p className="text-sm text-primary font-semibold">AMOUNT IN FIGURES</p>
+                        <p className="text-3xl font-bold text-primary">{formatCurrency(receipt.amountReceived)}</p>
                     </div>
-                    <div className="space-y-4 text-center md:text-right bg-primary/10 p-4 rounded-md">
-                        <p className="text-sm text-primary font-semibold">AMOUNT RECEIVED</p>
-                        <p className="text-4xl font-bold text-primary">{formatCurrency(receipt.amountReceived)}</p>
-                    </div>
-                </div>
-                {receipt.paymentType === 'Part Payment' && (
+                 </div>
+
+                 {receipt.paymentType === 'Part Payment' && (
                     <>
                         <Separator className="my-6 bg-border" />
                         <div className="grid grid-cols-3 gap-6 text-center">
