@@ -1,25 +1,24 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
 
+import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const form = useForm<z.infer<typeof forgotPasswordSchema>>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -32,14 +31,14 @@ export default function ForgotPasswordPage() {
     try {
       await sendPasswordResetEmail(auth, values.email);
       toast({
-        title: 'Reset Link Sent',
-        description: 'Please check your email for a link to reset your password.',
+        title: 'Check Your Email',
+        description: 'A password reset link has been sent to your email address.',
       });
-      router.push('/login');
+      form.reset();
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Error Sending Email',
+        title: 'Error',
         description: error.message,
       });
     }
@@ -49,9 +48,7 @@ export default function ForgotPasswordPage() {
     <Card className="w-full max-w-sm">
       <CardHeader>
         <CardTitle>Forgot Password</CardTitle>
-        <CardDescription>
-          Enter your email and we&apos;ll send you a link to reset your password.
-        </CardDescription>
+        <CardDescription>Enter your email and we will send you a link to reset your password.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -75,7 +72,7 @@ export default function ForgotPasswordPage() {
           </form>
         </Form>
         <div className="mt-4 text-center text-sm">
-          Remembered your password?{' '}
+          Remember your password?{' '}
           <Link href="/login" className="underline">
             Log in
           </Link>
