@@ -1,4 +1,5 @@
 
+
 export type Signatory = {
   id: string;
   name: string;
@@ -127,3 +128,4 @@ export type VendorInvoice = {
   items: VendorInvoiceItem[];
   notes?: string;
 };
+
