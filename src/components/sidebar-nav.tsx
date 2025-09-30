@@ -32,7 +32,7 @@ const links = [
     label: 'Payment Receipts',
     icon: HandCoins,
   },
-    {
+  {
     href: '/vendors',
     label: 'Vendors',
     icon: Users,
