@@ -34,6 +34,7 @@ const receiptSchema = z.object({
   receivedFrom: z.string().min(1, 'This field is required'),
   amountReceived: z.coerce.number().positive('Amount must be positive'),
   paymentMethod: z.string().min(1, 'Payment method is required'),
+  receivingBankId: z.string().optional(),
   relatedInvoiceNumber: z.string().optional(),
   paymentType: z.enum(['Full Payment', 'Part Payment', 'Final Payment']),
   notes: z.string().optional(),
@@ -243,6 +244,18 @@ export default function EditPaymentReceiptPage() {
                         />
                     </div>
 
+                     <FormField control={form.control} name="receivingBankId" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Receiving Bank</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.bankAccounts.length === 0}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {companyProfile.bankAccounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.bankName} - {acc.accountNumber}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </FormItem>
+                    )} />
+
                     <FormField control={form.control} name="paymentType" render={({ field }) => (
                        <FormItem>
                            <FormLabel>Payment Type</FormLabel>
@@ -275,7 +288,7 @@ export default function EditPaymentReceiptPage() {
                     )}
                     
                      <FormField control={form.control} name="notes" render={({ field }) => (
-                        <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea placeholder="Any additional details..." {...field} /></FormControl></FormItem>
+                        <FormItem><FormLabel>Payment Description</FormLabel><FormControl><Textarea placeholder="e.g., Part payment for website design" {...field} /></FormControl></FormItem>
                     )} />
                </div>
 

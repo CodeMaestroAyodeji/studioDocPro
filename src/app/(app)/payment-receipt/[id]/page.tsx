@@ -69,6 +69,7 @@ export default function PaymentReceiptPreviewPage() {
   }
 
   const issuedBy = companyProfile.signatories.find(s => s.id === receipt.issuedBy);
+  const receivingBank = companyProfile.bankAccounts.find(b => b.id === receipt.receivingBankId);
   const amountInWords = numberToWords(receipt.amountReceived);
 
   return (
@@ -111,24 +112,25 @@ export default function PaymentReceiptPreviewPage() {
               <div className="space-y-6 mb-12 text-base">
                  <div className="flex items-baseline gap-2">
                     <p className="text-muted-foreground">Received from:</p>
-                    <p className="font-semibold border-b border-dashed flex-1 pb-1">{receipt.receivedFrom}</p>
+                    <p className="font-bold text-lg border-b border-dashed flex-1 pb-1">{receipt.receivedFrom}</p>
                     <p className="text-muted-foreground">the sum of</p>
-                    <p className="font-semibold border-b border-dashed flex-1 pb-1">{formatCurrency(receipt.amountReceived)}</p>
+                    <p className="font-bold text-lg border-b border-dashed flex-1 pb-1">{formatCurrency(receipt.amountReceived)}</p>
                  </div>
                  
                  <div className="flex items-baseline gap-2">
                     <p className="text-muted-foreground">Amount in Words:</p>
-                    <p className="font-semibold capitalize border-b border-dashed flex-1 pb-1">{amountInWords}</p>
+                    <p className="font-bold text-lg capitalize border-b border-dashed flex-1 pb-1">{amountInWords}</p>
                  </div>
 
                 <div className="flex items-baseline gap-2">
                     <p className="text-muted-foreground">Being payment for:</p>
-                    <p className="font-semibold border-b border-dashed flex-1 pb-1">{receipt.notes || '-'}</p>
+                    <p className="font-bold text-lg border-b border-dashed flex-1 pb-1">{receipt.notes || '-'}</p>
                  </div>
 
                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 pt-6">
                     <DetailRow label="Payment Method" value={receipt.paymentMethod} />
                     <DetailRow label="Related Invoice #" value={receipt.relatedInvoiceNumber} />
+                     {receivingBank && <DetailRow label="Receiving Bank" value={`${receivingBank.bankName} - ${receivingBank.accountNumber}`} />}
                     <DetailRow label="Payment Type" value={receipt.paymentType} />
                     <div className="col-span-2 bg-primary/10 p-4 rounded-md text-center mt-4">
                         <p className="text-sm text-primary font-semibold">AMOUNT IN FIGURES</p>

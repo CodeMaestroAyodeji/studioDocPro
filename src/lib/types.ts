@@ -83,6 +83,7 @@ export type PaymentReceipt = {
     receivedFrom: string;
     amountReceived: number;
     paymentMethod: string;
+    receivingBankId?: string;
     relatedInvoiceNumber?: string;
     paymentType: 'Full Payment' | 'Part Payment' | 'Final Payment';
     notes?: string;
