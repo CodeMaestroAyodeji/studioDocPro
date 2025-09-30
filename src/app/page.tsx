@@ -1,9 +1,12 @@
+'use client';
 
 import { Button } from '@/components/ui/button';
 import { ArrowRight, FileText } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
+import { useAuth } from '@/contexts/auth-context';
+import { UserProfileButton } from '@/components/user-profile-button';
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
   <div className="flex flex-col items-center p-6 text-center bg-card rounded-lg shadow-md transition-shadow hover:shadow-lg">
@@ -17,6 +20,7 @@ const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, titl
 
 
 export default function LandingPage() {
+    const { user } = useAuth();
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -28,12 +32,23 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-1 items-center justify-end space-x-2">
             <nav className="flex items-center">
-              <Button variant="ghost" asChild>
-                <Link href="/purchase-order">Log In</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/purchase-order">Get Started <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
+              {user ? (
+                <>
+                    <Button variant="ghost" asChild>
+                        <Link href="/purchase-order">Dashboard</Link>
+                    </Button>
+                    <UserProfileButton />
+                </>
+              ) : (
+                <>
+                    <Button variant="ghost" asChild>
+                        <Link href="/login">Log In</Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href="/signup">Get Started <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                    </Button>
+                </>
+              )}
             </nav>
           </div>
         </div>
@@ -52,7 +67,7 @@ export default function LandingPage() {
                 </p>
                 <div className="mt-10 flex items-center justify-center gap-x-6">
                     <Button size="lg" asChild>
-                        <Link href="/purchase-order">
+                        <Link href={user ? "/purchase-order" : "/signup"}>
                         Get Started for Free
                         <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
