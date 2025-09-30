@@ -33,6 +33,7 @@ const bankAccountSchema = z.object({
 const profileSchema = z.object({
   name: z.string().min(1, 'Company name is required'),
   address: z.string().min(1, 'Address is required'),
+  tin: z.string().optional(),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
   website: z.string().url('Invalid URL'),
@@ -137,6 +138,9 @@ export default function ProfilePage() {
                   <FormField control={form.control} name="address" render={({ field }) => (
                     <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
+                   <FormField control={form.control} name="tin" render={({ field }) => (
+                    <FormItem><FormLabel>TIN</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
                   <FormField control={form.control} name="email" render={({ field }) => (
                     <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
@@ -144,7 +148,7 @@ export default function ProfilePage() {
                     <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="website" render={({ field }) => (
-                     <FormItem className="md:col-span-2"><FormLabel>Website</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                     <FormItem><FormLabel>Website</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
               </CardContent>

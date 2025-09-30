@@ -14,6 +14,7 @@ export type BankAccount = {
 export type CompanyProfile = {
   name: string;
   address: string;
+  tin?: string;
   email: string;
   phone: string;
   website: string;

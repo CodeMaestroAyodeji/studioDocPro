@@ -19,6 +19,7 @@ type Action =
 const initialState: State = {
   name: 'Your Company',
   address: '123 Business Rd, Suite 100, City, State 12345',
+  tin: '12345678-0001',
   email: 'contact@yourcompany.com',
   phone: '(123) 456-7890',
   website: 'www.yourcompany.com',

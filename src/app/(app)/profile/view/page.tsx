@@ -52,6 +52,7 @@ export default function ProfileViewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <DetailItem label="Company Name" value={profile.name} />
               <DetailItem label="Address" value={profile.address} />
+              <DetailItem label="TIN" value={profile.tin} />
               <DetailItem label="Email" value={profile.email} />
               <DetailItem label="Phone" value={profile.phone} />
               <DetailItem label="Website" value={profile.website} />

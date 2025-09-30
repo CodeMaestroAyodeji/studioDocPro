@@ -148,6 +148,7 @@ export default function NewSalesInvoicePage() {
                   )}
                   <p className="font-semibold">{companyProfile.name}</p>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{companyProfile.address}</p>
+                  {companyProfile.tin && <p className="text-sm text-muted-foreground">TIN: {companyProfile.tin}</p>}
                 </div>
                 <div className="text-right">
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">INVOICE</h1>
