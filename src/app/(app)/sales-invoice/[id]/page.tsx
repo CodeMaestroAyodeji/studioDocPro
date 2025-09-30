@@ -121,25 +121,26 @@ export default function SalesInvoicePreviewPage() {
                 </div>
                 <div className="text-right">
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">INVOICE</h1>
-                  <div className="grid grid-cols-2 gap-1 text-sm">
-                    <span className="font-semibold">Invoice #</span><span>{invoice.invoiceNumber}</span>
+                  <div className="space-y-1 text-sm">
+                    <div className="grid grid-cols-2 gap-1">
+                      <span className="font-semibold">Invoice #</span><span>{invoice.invoiceNumber}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      <span className="font-semibold">Invoice Date:</span>
+                      <span>{format(invoice.date, 'dd/MM/yyyy')}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      <span className="font-semibold">Due Date:</span>
+                      <span>{format(invoice.dueDate, 'dd/MM/yyyy')}</span>
+                    </div>
                   </div>
                 </div>
               </header>
-              <section className="grid md:grid-cols-3 gap-x-8 mb-8">
-                  <div>
+
+              <section className="mb-8">
+                  <div className="border rounded-md p-4 max-w-sm">
                       <p className="font-semibold text-muted-foreground">BILL TO</p>
-                      <pre className="font-sans whitespace-pre-wrap">{invoice.billTo}</pre>
-                  </div>
-                  <div className="md:col-span-2 md:text-right space-y-2">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                          <span className="font-semibold md:text-right md:col-start-3">Invoice Date:</span>
-                          <span>{format(invoice.date, 'dd/MM/yyyy')}</span>
-                      </div>
-                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                          <span className="font-semibold md:text-right md:col-start-3">Due Date:</span>
-                          <span>{format(invoice.dueDate, 'dd/MM/yyyy')}</span>
-                      </div>
+                      <pre className="font-sans whitespace-pre-wrap text-sm">{invoice.billTo}</pre>
                   </div>
               </section>
               
@@ -182,17 +183,17 @@ export default function SalesInvoicePreviewPage() {
                 </Table>
               </section>
 
-             <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                 <div className="space-y-4">
                     {invoice.notes && (
                         <div>
-                            <h3 className="font-semibold">Notes / Terms</h3>
+                            <h3 className="font-semibold text-sm">Notes / Terms</h3>
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{invoice.notes}</p>
                         </div>
                     )}
                      {paymentAccount && (
                         <div>
-                            <h3 className="font-semibold">Payment Details</h3>
+                            <h3 className="font-semibold text-sm">Payment Details</h3>
                             <div className="text-sm text-muted-foreground">
                                 <p>Bank: {paymentAccount.bankName}</p>
                                 <p>Account Name: {paymentAccount.accountName}</p>
@@ -203,8 +204,22 @@ export default function SalesInvoicePreviewPage() {
                 </div>
              </section>
               
-            <footer className="text-center text-xs text-muted-foreground pt-12">
-                <p>{companyProfile.phone} | {companyProfile.email} | {companyProfile.website}</p>
+            <footer className="space-y-4">
+                 <div className="grid grid-cols-2 gap-8 pt-8">
+                    <div className="text-center">
+                        <div className="h-12"></div>
+                        <div className="border-b border-foreground w-2/3 mx-auto"></div>
+                        <p className="text-sm font-semibold mt-2">Authorized Signatory</p>
+                    </div>
+                    <div className="text-center">
+                        <div className="h-12"></div>
+                        <div className="border-b border-foreground w-2/3 mx-auto"></div>
+                        <p className="text-sm font-semibold mt-2">Authorized Signatory</p>
+                    </div>
+                 </div>
+                 <div className="text-center text-xs text-muted-foreground pt-12">
+                    <p>{companyProfile.phone} | {companyProfile.email} | {companyProfile.website}</p>
+                </div>
             </footer>
         </DocumentPage>
       </main>
