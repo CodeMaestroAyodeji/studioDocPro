@@ -33,9 +33,14 @@ const links = [
     icon: HandCoins,
   },
     {
+    href: '/vendors',
+    label: 'Vendors',
+    icon: Users,
+  },
+  {
     href: '/vendor-invoice',
     label: 'Vendor Invoices',
-    icon: Users,
+    icon: ReceiptText,
   },
   {
     href: '/profile',
