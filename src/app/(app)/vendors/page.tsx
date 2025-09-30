@@ -39,6 +39,7 @@ export default function VendorListPage() {
             storageKeyPrefix="vendor_"
             viewUrlPrefix="/vendors/"
             itemIdentifier="id"
+            enableDateFilter={false}
         />
       </main>
     </div>

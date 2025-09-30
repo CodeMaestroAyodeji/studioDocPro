@@ -20,22 +20,24 @@ type Column = {
   cell?: (value: any) => React.ReactNode;
 };
 
-type DocumentListProps<T extends { id?: string; date: Date }> = {
+type DocumentListProps<T extends { id?: string; date?: Date }> = {
   columns: Column[];
   dataFetcher: () => T[];
   searchFields: (keyof T)[];
   storageKeyPrefix: string;
   viewUrlPrefix: string;
   itemIdentifier?: keyof T;
+  enableDateFilter?: boolean;
 };
 
-export function DocumentList<T extends { id?: string; date: Date, poNumber?: string, voucherNumber?: string, invoiceNumber?: string, receiptNumber?: string }>({
+export function DocumentList<T extends { id?: string; date?: Date, poNumber?: string, voucherNumber?: string, invoiceNumber?: string, receiptNumber?: string }>({
   columns,
   dataFetcher,
   searchFields,
   storageKeyPrefix,
   viewUrlPrefix,
   itemIdentifier = "id",
+  enableDateFilter = true,
 }: DocumentListProps<T>) {
   const router = useRouter();
   const { toast } = useToast();
@@ -58,29 +60,35 @@ export function DocumentList<T extends { id?: string; date: Date, poNumber?: str
       );
     }
 
-    if (selectedMonth !== 'all') {
+    if (enableDateFilter && selectedMonth !== 'all') {
       const [month, year] = selectedMonth.split('-').map(Number);
       filtered = filtered.filter(doc => {
+        if (!doc.date) return false;
         const docDate = new Date(doc.date);
         return getMonth(docDate) === month && getYear(docDate) === year;
       });
     }
 
     return filtered;
-  }, [documents, searchTerm, selectedMonth, searchFields]);
+  }, [documents, searchTerm, selectedMonth, searchFields, enableDateFilter]);
   
   const monthOptions = useMemo(() => {
+    if (!enableDateFilter) return [];
     const options = new Map<string, string>();
     documents.forEach(doc => {
-      const docDate = new Date(doc.date);
-      const monthYearKey = `${getMonth(docDate)}-${getYear(docDate)}`;
-      const monthYearLabel = format(docDate, 'MMMM yyyy');
-      if (!options.has(monthYearKey)) {
-        options.set(monthYearKey, monthYearLabel);
+      if (doc.date) {
+        const docDate = new Date(doc.date);
+        if (!isNaN(docDate.getTime())) {
+          const monthYearKey = `${getMonth(docDate)}-${getYear(docDate)}`;
+          const monthYearLabel = format(docDate, 'MMMM yyyy');
+          if (!options.has(monthYearKey)) {
+            options.set(monthYearKey, monthYearLabel);
+          }
+        }
       }
     });
     return Array.from(options.entries()).map(([key, label]) => ({ value: key, label }));
-  }, [documents]);
+  }, [documents, enableDateFilter]);
 
   const handleDelete = (doc: T) => {
     const docId = doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber || doc.receiptNumber;
@@ -126,19 +134,21 @@ export function DocumentList<T extends { id?: string; date: Date, poNumber?: str
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Filter by month" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Months</SelectItem>
-                        {monthOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                        </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                {enableDateFilter && (
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Filter by month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Months</SelectItem>
+                            {monthOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
                  <Button variant="ghost" onClick={handleClearFilters} className="flex items-center gap-2">
                     <X className="h-4 w-4" />
                     Clear
