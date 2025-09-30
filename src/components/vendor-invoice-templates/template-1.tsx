@@ -13,7 +13,7 @@ const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
 };
 
-export function InvoiceTemplate1({ vendor, invoice, companyProfile, subtotal, totalDiscount, totalTax, grandTotal, isEditing = false, ...props }: TemplateProps) {
+export function InvoiceTemplate1({ vendor, invoice, companyProfile, subtotal, totalDiscount, totalTax, grandTotal, isEditing = false, form }: TemplateProps) {
   const amountInWords = numberToWords(grandTotal);
 
   return (
@@ -53,7 +53,7 @@ export function InvoiceTemplate1({ vendor, invoice, companyProfile, subtotal, to
         </section>
 
         <section className="mb-8">
-            {isEditing ? <EditableTemplateFields {...props} formatCurrency={formatCurrency} /> : (
+            {isEditing ? <EditableTemplateFields form={form} formatCurrency={formatCurrency} /> : (
                 <Table>
                 <TableHeader>
                     <TableRow>

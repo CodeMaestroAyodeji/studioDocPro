@@ -12,17 +12,9 @@ export type TemplateProps = {
   grandTotal: number;
   isEditing?: boolean;
   form?: UseFormReturn<any>;
-  watchedItems?: any[];
-  fields?: FieldArrayWithId<any, "items", "id">[];
-  append?: (item: any) => void;
-  remove?: (index: number) => void;
 };
 
 export type EditableTemplateFieldsProps = {
-    form?: UseFormReturn<any>;
-    watchedItems?: any[];
-    fields?: FieldArrayWithId<any, "items", "id">[];
-    append?: (item: any) => void;
-    remove?: (index: number) => void;
+    form: UseFormReturn<any>;
     formatCurrency: (amount: number) => string;
 }

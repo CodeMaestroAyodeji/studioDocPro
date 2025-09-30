@@ -8,10 +8,18 @@ import { Checkbox } from '../ui/checkbox';
 import { Button } from '../ui/button';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import type { EditableTemplateFieldsProps } from './types';
+import { useFieldArray } from 'react-hook-form';
 
 
-export function EditableTemplateFields({ form, watchedItems, fields, append, remove, formatCurrency }: EditableTemplateFieldsProps) {
-  if (!form || !fields || !append || !remove || !watchedItems) return null;
+export function EditableTemplateFields({ form, formatCurrency }: EditableTemplateFieldsProps) {
+  if (!form) return null;
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'items',
+  });
+  
+  const watchedItems = form.watch('items');
 
   return (
     <>
@@ -46,7 +54,7 @@ export function EditableTemplateFields({ form, watchedItems, fields, append, rem
                 <FormField control={form.control} name={`items.${index}.tax`} render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />} />
               </TableCell>
               <TableCell className="text-right font-medium">
-                {formatCurrency((watchedItems[index]?.quantity || 0) * (watchedItems[index]?.rate || 0))}
+                {formatCurrency(((watchedItems && watchedItems[index]?.quantity) || 0) * ((watchedItems && watchedItems[index]?.rate) || 0))}
               </TableCell>
               <TableCell>
                 <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
