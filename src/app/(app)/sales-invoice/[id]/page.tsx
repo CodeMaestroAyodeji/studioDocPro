@@ -16,6 +16,7 @@ import type { SalesInvoice } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
+import { numberToWords } from '@/lib/number-to-words';
 
 type StoredSalesInvoice = Omit<SalesInvoice, 'date' | 'dueDate'> & { date: string, dueDate: string };
 
@@ -84,6 +85,7 @@ export default function SalesInvoicePreviewPage() {
   };
 
   const { subtotal, vatAmount, grandTotal } = calculateTotals();
+  const amountInWords = numberToWords(grandTotal);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
@@ -119,7 +121,7 @@ export default function SalesInvoicePreviewPage() {
                   )}
                   <p className="font-semibold">{companyProfile.name}</p>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{companyProfile.address}</p>
-                  {companyProfile.tin && <p className="text-sm text-muted-foreground">TIN: {companyProfile.tin}</p>}
+                  {companyProfile.tin && <p className="text-sm text-muted-foreground font-semibold">TIN: {companyProfile.tin}</p>}
                 </div>
                 <div className="text-right">
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">INVOICE</h1>
@@ -187,6 +189,10 @@ export default function SalesInvoicePreviewPage() {
 
              <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                 <div className="space-y-4">
+                    <div className="py-2">
+                        <p className="font-semibold text-sm">Amount in words:</p>
+                        <p className="capitalize text-sm text-muted-foreground">{amountInWords}</p>
+                    </div>
                     {invoice.notes && (
                         <div>
                             <h3 className="font-semibold text-sm">Notes / Terms</h3>
