@@ -29,7 +29,7 @@ type DocumentListProps<T extends { id?: string; date: Date }> = {
   itemIdentifier?: keyof T;
 };
 
-export function DocumentList<T extends { id?: string; date: Date, poNumber?: string, voucherNumber?: string, invoiceNumber?: string }>({
+export function DocumentList<T extends { id?: string; date: Date, poNumber?: string, voucherNumber?: string, invoiceNumber?: string, receiptNumber?: string }>({
   columns,
   dataFetcher,
   searchFields,
@@ -83,7 +83,7 @@ export function DocumentList<T extends { id?: string; date: Date, poNumber?: str
   }, [documents]);
 
   const handleDelete = (doc: T) => {
-    const docId = doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber;
+    const docId = doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber || doc.receiptNumber;
     if (docId) {
       localStorage.removeItem(`${storageKeyPrefix}${docId}`);
       setDocuments(dataFetcher());
@@ -108,7 +108,7 @@ export function DocumentList<T extends { id?: string; date: Date, poNumber?: str
   };
 
   const getDocId = (doc: T) => {
-    return doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber;
+    return doc[itemIdentifier as keyof T] || doc.poNumber || doc.voucherNumber || doc.invoiceNumber || doc.receiptNumber;
   }
   
   return (

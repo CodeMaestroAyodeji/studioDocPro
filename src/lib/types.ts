@@ -1,3 +1,4 @@
+
 export type Signatory = {
   id: string;
   name: string;
@@ -69,9 +70,23 @@ export type SalesInvoice = {
   dueDate: Date;
   billTo: string;
   items: SalesInvoiceItem[];
-  notes: string;
+  notes?: string;
   applyVat: boolean;
   paymentAccountId: string;
   signatory1?: string;
   signatory2?: string;
+};
+
+export type PaymentReceipt = {
+    receiptNumber: string;
+    date: Date;
+    receivedFrom: string;
+    amountReceived: number;
+    paymentMethod: string;
+    relatedInvoiceNumber?: string;
+    paymentType: 'Full Payment' | 'Part Payment' | 'Final Payment';
+    notes?: string;
+    issuedBy: string;
+    totalAmount?: number;
+    amountDue?: number;
 };
