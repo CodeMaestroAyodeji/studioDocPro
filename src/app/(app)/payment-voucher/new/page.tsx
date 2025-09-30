@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from "lucide-react"
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -23,9 +23,8 @@ import { DocumentPage } from '@/components/document-page';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { AISuggestionButton } from '@/components/ai-suggestion-button';
+import { getNextVoucherNumber } from '@/lib/voucher-sequence';
 import { numberToWords } from '@/lib/number-to-words';
-import type { PaymentVoucher } from '@/lib/types';
 
 const voucherSchema = z.object({
   voucherNumber: z.string(),
@@ -42,16 +41,12 @@ const voucherSchema = z.object({
   payeeAccountNumber: z.string().optional(),
 });
 
-type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
-
-export default function EditPaymentVoucherPage() {
+export default function NewPaymentVoucherPage() {
   const { state: companyProfile } = useCompanyProfile();
   const { toast } = useToast();
   const router = useRouter();
-  const params = useParams();
-  const voucherId = params.id as string;
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
-  const [voucher, setVoucher] = useState<PaymentVoucher | null>(null);
+  const [voucherNumber, setVoucherNumber] = useState('');
   
   const form = useForm<z.infer<typeof voucherSchema>>({
     resolver: zodResolver(voucherSchema),
@@ -61,7 +56,10 @@ export default function EditPaymentVoucherPage() {
       date: new Date(),
       amount: 0,
       paymentMethod: 'Bank Transfer',
+      bankAccountId: companyProfile.bankAccounts[0]?.id || '',
       description: '',
+      preparedBy: '',
+      approvedBy: '',
       payeeBankName: '',
       payeeAccountName: '',
       payeeAccountNumber: '',
@@ -69,43 +67,22 @@ export default function EditPaymentVoucherPage() {
   });
 
   useEffect(() => {
-    try {
-      const storedVoucher = localStorage.getItem(`voucher_${voucherId}`);
-      if (storedVoucher) {
-        const parsed: StoredPaymentVoucher = JSON.parse(storedVoucher);
-        const voucherData = {
-          ...parsed,
-          date: new Date(parsed.date),
-        };
-        setVoucher(voucherData);
-        form.reset(voucherData);
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Voucher not found',
-        });
-        router.push('/payment-voucher');
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error loading voucher',
-      });
-      router.push('/payment-voucher');
-    }
-  }, [voucherId, router, toast, form]);
-
+    const nextVoucherNumber = getNextVoucherNumber();
+    setVoucherNumber(nextVoucherNumber);
+    form.setValue('voucherNumber', nextVoucherNumber);
+  }, [form]);
 
   const handleSubmit = (values: z.infer<typeof voucherSchema>) => {
      try {
+        const nextVoucherNumber = getNextVoucherNumber(true);
         const voucherWithDateAsString = {
             ...values,
             date: values.date.toISOString(),
         }
         localStorage.setItem(`voucher_${values.voucherNumber}`, JSON.stringify(voucherWithDateAsString));
         toast({
-            title: 'Voucher Updated',
-            description: `Voucher ${values.voucherNumber} has been updated.`,
+            title: 'Voucher Saved',
+            description: `Voucher ${values.voucherNumber} has been saved.`,
         });
         router.push(`/payment-voucher/${values.voucherNumber}`);
      } catch (error) {
@@ -122,24 +99,12 @@ export default function EditPaymentVoucherPage() {
   const amountInWords = numberToWords(form.watch('amount'));
   const watchedForm = form.watch();
 
-  if (!voucher) {
-    return (
-      <div className="flex flex-1 flex-col">
-        <Header title="Loading Voucher..." />
-        <main className="flex-1 p-6 text-center">
-          <p>Loading voucher for editing...</p>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-1 flex-col">
-      <Header title={`Edit Voucher ${voucher.voucherNumber}`} />
+      <Header title="New Payment Voucher" />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
-        <div className="flex justify-end sticky top-[57px] sm:top-0 z-10 py-2 bg-background no-print gap-2">
-            <Button variant="outline" onClick={() => router.push(`/payment-voucher/${voucherId}`)}>Cancel</Button>
-            <Button type="submit" form="voucher-form">Save Changes</Button>
+        <div className="flex justify-end sticky top-[57px] sm:top-0 z-10 py-2 bg-background no-print">
+            <Button type="submit" form="voucher-form">Save Voucher</Button>
         </div>
         <Form {...form}>
           <form id="voucher-form" onSubmit={form.handleSubmit(handleSubmit)}>
@@ -161,7 +126,7 @@ export default function EditPaymentVoucherPage() {
                 <div className="text-right">
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">PAYMENT VOUCHER</h1>
                   <div className="grid grid-cols-2 gap-1 text-sm">
-                    <span className="font-semibold">Voucher #</span><span>{watchedForm.voucherNumber}</span>
+                    <span className="font-semibold">Voucher #</span><span>{voucherNumber}</span>
                     <span className="font-semibold">Voucher Date</span><span>{formattedDate}</span>
                   </div>
                 </div>
@@ -184,7 +149,7 @@ export default function EditPaymentVoucherPage() {
                               {field.value ? format(field.value, "dd/MM/yyyy") : <span>Pick a date</span>}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
+                          <PopoverContent className="w-auto p-0 no-print">
                             <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                           </PopoverContent>
                         </Popover>
@@ -201,7 +166,7 @@ export default function EditPaymentVoucherPage() {
                         <FormField control={form.control} name="payeeName" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Payee Name</FormLabel>
-                            <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                               <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -215,7 +180,7 @@ export default function EditPaymentVoucherPage() {
                                         <SelectValue placeholder="Select a payment method" />
                                     </SelectTrigger>
                                     </FormControl>
-                                    <SelectContent>
+                                    <SelectContent className="no-print">
                                         <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
                                         <SelectItem value="Cash">Cash</SelectItem>
                                         <SelectItem value="Cheque">Cheque</SelectItem>
@@ -234,7 +199,7 @@ export default function EditPaymentVoucherPage() {
                                         <SelectValue placeholder={companyProfile.bankAccounts.length === 0 ? "No bank accounts set up" : "Select an account"} />
                                     </SelectTrigger>
                                     </FormControl>
-                                    <SelectContent>
+                                    <SelectContent className="no-print">
                                        {companyProfile.bankAccounts.map(acc => (
                                          <SelectItem key={acc.id} value={acc.id}>{acc.bankName} - {acc.accountNumber}</SelectItem>
                                        ))}
@@ -246,7 +211,7 @@ export default function EditPaymentVoucherPage() {
                      <FormField control={form.control} name="description" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Description of Payment</FormLabel>
-                            <FormControl><Input placeholder="e.g. Payment for invoice #123" {...field} /></FormControl>
+                                <FormControl><Input placeholder="e.g. Payment for invoice #123" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -295,7 +260,7 @@ export default function EditPaymentVoucherPage() {
                                 <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
                             </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
+                            <SelectContent className="no-print">
                                 {companyProfile.signatories.map(s => (
                                     <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
                                 ))}
@@ -313,7 +278,7 @@ export default function EditPaymentVoucherPage() {
                                 <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
                             </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
+                            <SelectContent className="no-print">
                                 {companyProfile.signatories.map(s => (
                                     <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
                                 ))}
@@ -323,7 +288,7 @@ export default function EditPaymentVoucherPage() {
                       </FormItem>
                   )} />
               </footer>
-                 <div className="text-center text-xs text-muted-foreground pt-12">
+                <div className="text-center text-xs text-muted-foreground pt-12">
                     <p className='font-bold text-sm text-foreground'>{companyProfile.name}</p>
                     <p>{companyProfile.address}</p>
                     <p>

@@ -121,7 +121,6 @@ export default function PaymentVoucherPreviewPage() {
                   className="rounded-md object-contain mb-4"
                 />
               )}
-              <h2 className="font-bold text-lg">{companyProfile.name}</h2>
               <p className="text-sm text-muted-foreground">{companyProfile.address}</p>
             </div>
             <div className="text-right">
@@ -183,10 +182,15 @@ export default function PaymentVoucherPreviewPage() {
                 <p className="text-sm font-semibold mt-1">{approvedBy?.name}</p>
              </div>
           </footer>
+            <div className="text-center text-xs text-muted-foreground pt-12">
+                <p className='font-bold text-sm text-foreground'>{companyProfile.name}</p>
+                <p>{companyProfile.address}</p>
+                <p>
+                    <span>{companyProfile.phone}</span> | <span>{companyProfile.email}</span> | <span>{companyProfile.website}</span>
+                </p>
+            </div>
         </DocumentPage>
       </main>
     </div>
   );
 }
-
-    

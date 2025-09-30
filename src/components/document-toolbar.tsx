@@ -1,18 +1,30 @@
+
 'use client';
 
-import { Download } from 'lucide-react';
+import { Download, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export function DocumentToolbar() {
+type DocumentToolbarProps = {
+    onSave?: () => void;
+    formId?: string;
+}
+
+export function DocumentToolbar({ onSave, formId }: DocumentToolbarProps) {
   const handlePrint = () => {
     window.print();
   };
 
   return (
     <div className="mb-4 flex justify-end gap-2 no-print">
-      <Button onClick={handlePrint}>
+      {onSave && formId && (
+         <Button type="submit" form={formId}>
+            <Save className="mr-2 h-4 w-4" />
+            Save
+        </Button>
+      )}
+      <Button onClick={handlePrint} variant="outline">
         <Download className="mr-2 h-4 w-4" />
-        Export to PDF
+        Print
       </Button>
     </div>
   );
