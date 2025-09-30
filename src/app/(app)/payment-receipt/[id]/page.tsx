@@ -20,11 +20,12 @@ import { Separator } from '@/components/ui/separator';
 type StoredPaymentReceipt = Omit<PaymentReceipt, 'date'> & { date: string };
 
 const DetailRow = ({ label, value }: { label: string; value: string | number | undefined | null }) => (
-    <div className="grid grid-cols-2 gap-4 items-start py-2">
-        <p className="text-sm text-muted-foreground font-semibold">{label}</p>
-        <p className="font-medium">{value || '-'}</p>
+    <div className="flex justify-between items-start py-1">
+        <p className="text-sm text-muted-foreground font-semibold whitespace-nowrap mr-2">{label}:</p>
+        <p className="font-medium text-right break-words">{value || '-'}</p>
     </div>
 );
+
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
@@ -127,24 +128,34 @@ export default function PaymentReceiptPreviewPage() {
                     <p className="font-bold text-lg border-b border-dashed flex-1 pb-1">{receipt.notes || '-'}</p>
                  </div>
 
-                 <div className="grid grid-cols-2 gap-x-8 gap-y-2 pt-6">
+                 <div className="grid grid-cols-2 gap-x-12 pt-6">
                     <DetailRow label="Payment Method" value={receipt.paymentMethod} />
                     <DetailRow label="Related Invoice #" value={receipt.relatedInvoiceNumber} />
                      {receivingBank && <DetailRow label="Receiving Bank" value={`${receivingBank.bankName} - ${receivingBank.accountNumber}`} />}
                     <DetailRow label="Payment Type" value={receipt.paymentType} />
-                    <div className="col-span-2 bg-primary/10 p-4 rounded-md text-center mt-4">
-                        <p className="text-sm text-primary font-semibold">AMOUNT IN FIGURES</p>
-                        <p className="text-3xl font-bold text-primary">{formatCurrency(receipt.amountReceived)}</p>
-                    </div>
+                    
                  </div>
+                 <div className="col-span-2 bg-primary/10 p-4 rounded-md text-center mt-6">
+                    <p className="text-sm text-primary font-semibold">AMOUNT IN FIGURES</p>
+                    <p className="text-3xl font-bold text-primary">{formatCurrency(receipt.amountReceived)}</p>
+                </div>
 
                  {receipt.paymentType === 'Part Payment' && (
                     <>
                         <Separator className="my-6 bg-border" />
                         <div className="grid grid-cols-3 gap-6 text-center">
-                            <DetailRow label="Total Invoice Amount" value={receipt.totalAmount ? formatCurrency(receipt.totalAmount) : '-'} />
-                            <DetailRow label="Amount Paid" value={formatCurrency(receipt.amountReceived)} />
-                            <DetailRow label="Balance Due" value={receipt.amountDue ? formatCurrency(receipt.amountDue) : '-'} />
+                            <div>
+                                <p className="text-sm text-muted-foreground font-semibold">Total Invoice Amount</p>
+                                <p className="font-medium">{receipt.totalAmount ? formatCurrency(receipt.totalAmount) : '-'}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground font-semibold">Amount Paid</p>
+                                <p className="font-medium">{formatCurrency(receipt.amountReceived)}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground font-semibold">Balance Due</p>
+                                <p className="font-medium">{receipt.amountDue ? formatCurrency(receipt.amountDue) : '-'}</p>
+                            </div>
                         </div>
                     </>
                 )}
@@ -152,9 +163,13 @@ export default function PaymentReceiptPreviewPage() {
 
               <footer className="flex justify-end items-center text-center pt-16">
                  <div className="w-1/2">
-                    <div className="border-b-2 border-foreground w-full"></div>
-                    <p className="text-sm mt-2 font-semibold">AUTHORISED SIGNATORY</p>
-                    {issuedBy && <p className="text-xs text-muted-foreground">{issuedBy.name} - {issuedBy.title}</p>}
+                    <div className="border-b-2 border-foreground w-full mb-2"></div>
+                    {issuedBy && (
+                        <>
+                            <p className="text-sm font-semibold">{issuedBy.name}</p>
+                            <p className="text-xs text-muted-foreground">{`For: ${companyProfile.name}`}</p>
+                        </>
+                    )}
                  </div>
               </footer>
         </DocumentPage>
