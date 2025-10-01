@@ -4,7 +4,6 @@
 import { usePathname } from 'next/navigation';
 import { Building2, Newspaper, Receipt, ReceiptText, HandCoins, Users, LayoutDashboard, UserCog } from 'lucide-react';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/auth-context';
 
 import {
   SidebarMenu,
@@ -48,11 +47,6 @@ const allLinks = [
     label: 'Vendor Invoices',
     icon: ReceiptText,
   },
-   {
-    href: '/users',
-    label: 'User Management',
-    icon: UserCog,
-  },
   {
     href: '/profile/view',
     label: 'Company Profile',
@@ -62,7 +56,6 @@ const allLinks = [
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const { user } = useAuth();
   
   const links = allLinks;
 

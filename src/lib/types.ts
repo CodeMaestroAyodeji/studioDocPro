@@ -1,9 +1,4 @@
 
-
-
-
-
-
 export type Signatory = {
   id: string;
   name: string;
@@ -131,17 +126,4 @@ export type VendorInvoice = {
   dueDate: Date;
   items: VendorInvoiceItem[];
   notes?: string;
-};
-
-export type UserRole = 'Admin' | 'Accountant' | 'Project Manager';
-
-export type AppUser = {
-    uid: string;
-    email?: string;
-    displayName?: string;
-    photoURL?: string;
-    disabled: boolean;
-    emailVerified: boolean;
-    role?: UserRole;
-    lastSignInTime?: string;
 };
