@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
-import { createUserProfile } from '@/ai/flows/create-user-profile';
 
 
 const signupSchema = z.object({
@@ -37,19 +36,10 @@ export default function SignupPage() {
 
   const onSubmit = async (values: z.infer<typeof signupSchema>) => {
     try {
-      // 1. Create the user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const { user } = userCredential;
 
-      // 2. Update the user's display name in Firebase Auth
       await updateProfile(user, { displayName: values.name });
-
-      // 3. Call the trusted flow to create the user's profile in Firestore
-      await createUserProfile({
-        uid: user.uid,
-        email: user.email!,
-        name: values.name,
-      });
       
       toast({
         title: 'Account Created',
