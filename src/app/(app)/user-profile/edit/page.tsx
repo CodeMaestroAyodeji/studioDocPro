@@ -50,7 +50,7 @@ export default function EditProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const form = useForm<z.infer<typeof profileSchema>>({
+  const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       displayName: user?.displayName || '',
@@ -67,7 +67,7 @@ export default function EditProfilePage() {
 
   useEffect(() => {
     if (user) {
-      form.reset({
+      profileForm.reset({
         displayName: user.displayName || '',
         photoURL: user.photoURL || '',
       });
@@ -75,7 +75,7 @@ export default function EditProfilePage() {
         email: user.email || '',
       });
     }
-  }, [user, form, emailForm]);
+  }, [user, profileForm, emailForm]);
 
   const onProfileSubmit = async (values: z.infer<typeof profileSchema>) => {
     if (!user) {
@@ -92,6 +92,8 @@ export default function EditProfilePage() {
         title: 'Profile Updated',
         description: 'Your name and profile picture have been updated.',
       });
+      // Force a reload of the user to get the latest data
+      await user.reload(); 
       router.push('/user-profile');
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
@@ -101,17 +103,18 @@ export default function EditProfilePage() {
   };
   
   const onEmailSubmit = async (values: z.infer<typeof emailSchema>) => {
-    if (!user || !auth.currentUser) {
+    if (!user) {
         toast({ variant: 'destructive', title: 'You must be logged in' });
         return;
     }
     setIsSubmitting(true);
     try {
-      await updateEmail(auth.currentUser, values.email);
+      await updateEmail(user, values.email);
       toast({
-        title: 'Email Update Requested',
-        description: 'Your email has been updated. You may need to re-login.',
+        title: 'Email Update Successful',
+        description: 'Your email has been updated. You will be logged out for security.',
       });
+      await auth.signOut();
       router.push('/login');
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Update Failed', description: 'This action requires a recent login. Please log out and log back in to change your email.' });
@@ -145,13 +148,13 @@ export default function EditProfilePage() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        form.setValue('photoURL', reader.result as string, { shouldValidate: true });
+        profileForm.setValue('photoURL', reader.result as string, { shouldValidate: true });
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const photoURL = form.watch('photoURL');
+  const photoURL = profileForm.watch('photoURL');
 
   if (!user) {
     return (
@@ -170,15 +173,15 @@ export default function EditProfilePage() {
                 <Button variant="outline" onClick={() => router.push('/user-profile')}>Cancel</Button>
             </div>
             
-            <Form {...form}>
-            <form onSubmit={form.handleSubmit(onProfileSubmit)} className="space-y-4">
+            <Form {...profileForm}>
+            <form id="profile-form" onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Public Profile</CardTitle>
                 <CardDescription>This information may be visible to other members of your team.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <FormField control={form.control} name="displayName" render={({ field }) => (
+                <FormField control={profileForm.control} name="displayName" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Full Name</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
@@ -200,7 +203,7 @@ export default function EditProfilePage() {
                 </FormItem>
               </CardContent>
               <div className="p-6 pt-0">
-                <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
+                <Button type="submit" form="profile-form" disabled={isSubmitting || !profileForm.formState.isDirty}>
                     {isSubmitting ? 'Saving...' : 'Save Profile Changes'}
                 </Button>
               </div>
@@ -217,12 +220,12 @@ export default function EditProfilePage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                    <Form {...emailForm}>
-                    <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
+                    <form id="email-form" onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
                         <Alert>
                             <Mail className="h-4 w-4" />
                             <AlertTitle>Change Email Address</AlertTitle>
                             <AlertDescription>
-                                Changing your email requires re-authentication. For security, you may be logged out.
+                                Changing your email requires re-authentication. For security, you will be logged out.
                             </AlertDescription>
                         </Alert>
                          <FormField control={emailForm.control} name="email" render={({ field }) => (
@@ -230,7 +233,7 @@ export default function EditProfilePage() {
                                 <FormLabel>Email Address</FormLabel>
                                 <div className="flex gap-2">
                                 <FormControl><Input {...field} type="email" /></FormControl>
-                                <Button type="submit" disabled={isSubmitting || !emailForm.formState.isDirty}>Update Email</Button>
+                                <Button type="submit" form="email-form" disabled={isSubmitting || !emailForm.formState.isDirty}>Update Email</Button>
                                 </div>
                                 <FormMessage />
                             </FormItem>
@@ -275,3 +278,5 @@ export default function EditProfilePage() {
     </div>
   );
 }
+
+    
