@@ -2,8 +2,9 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Building2, Newspaper, Receipt, ReceiptText, HandCoins, Users, LayoutDashboard } from 'lucide-react';
+import { Building2, Newspaper, Receipt, ReceiptText, HandCoins, Users, LayoutDashboard, UserCog } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/auth-context';
 
 import {
   SidebarMenu,
@@ -11,7 +12,7 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 
-const links = [
+const allLinks = [
     {
     href: '/dashboard',
     label: 'Dashboard',
@@ -47,6 +48,12 @@ const links = [
     label: 'Vendor Invoices',
     icon: ReceiptText,
   },
+   {
+    href: '/users',
+    label: 'User Management',
+    icon: UserCog,
+    admin: true,
+  },
   {
     href: '/profile/view',
     label: 'Company Profile',
@@ -56,6 +63,9 @@ const links = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
+  
+  const links = allLinks.filter(link => !link.admin || isAdmin);
 
   return (
     <SidebarMenu>

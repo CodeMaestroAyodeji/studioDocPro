@@ -7,17 +7,20 @@ import { useAuth } from '@/contexts/auth-context';
 import { ArrowRight, FileText, HandCoins, Newspaper, Receipt, ReceiptText, Users } from 'lucide-react';
 import Link from 'next/link';
 
-const quickLinks = [
+const allLinks = [
     { href: '/purchase-order/new', label: 'New Purchase Order', icon: Newspaper },
     { href: '/payment-voucher/new', label: 'New Payment Voucher', icon: Receipt },
     { href: '/sales-invoice/new', label: 'New Sales Invoice', icon: ReceiptText },
     { href: '/payment-receipt/new', label: 'New Payment Receipt', icon: HandCoins },
     { href: '/vendors/new', label: 'New Vendor', icon: Users },
+    { href: '/users', label: 'User Management', icon: Users, admin: true },
 ];
 
 export default function DashboardPage() {
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
     
+    const quickLinks = allLinks.filter(link => !link.admin || isAdmin);
+
     return (
         <div className="flex flex-1 flex-col">
             <Header title={`Welcome, ${user?.displayName || 'User'}!`} />
