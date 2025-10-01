@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { AppUser } from '@/lib/types';
 
@@ -23,24 +23,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
       setUser(user);
       if (user) {
+        // User is logged in, fetch their profile from Firestore.
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           setAppUser(userDoc.data() as AppUser);
         } else {
-            // This is a new user, create their profile document.
-            const newUserProfile: AppUser = {
-                uid: user.uid,
-                email: user.email!,
-                name: user.displayName || 'New User',
-                role: 'Project Manager', // Default role
-            };
-            await setDoc(userDocRef, newUserProfile);
-            setAppUser(newUserProfile);
+            // This case should ideally not happen with the new signup flow,
+            // but as a fallback, we can log it.
+            console.error("User profile not found in Firestore for UID:", user.uid);
+            setAppUser(null);
         }
       } else {
+        // User is logged out.
         setAppUser(null);
       }
       setLoading(false);
