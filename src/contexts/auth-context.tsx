@@ -6,7 +6,6 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { Skeleton } from '@/components/ui/skeleton';
 import type { AppUser } from '@/lib/types';
 
 type AuthContextType = {
@@ -24,7 +23,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
       setUser(user);
       if (user) {
         const userDocRef = doc(db, 'users', user.uid);
@@ -51,20 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  if (loading) {
-     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <div className="space-y-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <AuthContext.Provider value={{ user, appUser, loading: loading && !user }}>
+    <AuthContext.Provider value={{ user, appUser, loading }}>
       {children}
     </AuthContext.Provider>
   );
