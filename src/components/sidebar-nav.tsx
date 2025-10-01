@@ -52,7 +52,6 @@ const allLinks = [
     href: '/users',
     label: 'User Management',
     icon: UserCog,
-    admin: true,
   },
   {
     href: '/profile/view',
@@ -63,9 +62,9 @@ const allLinks = [
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
+  const { user } = useAuth();
   
-  const links = allLinks.filter(link => !link.admin || isAdmin);
+  const links = allLinks;
 
   return (
     <SidebarMenu>

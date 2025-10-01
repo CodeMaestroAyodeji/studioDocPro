@@ -17,27 +17,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function UserManagementPage() {
-    const { isAdmin, loading: authLoading } = useAuth();
+    const { user: authUser, loading: authLoading } = useAuth();
     const router = useRouter();
     const [users, setUsers] = useState<AppUser[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!authLoading && !isAdmin) {
-            router.push('/dashboard');
-        }
-    }, [isAdmin, authLoading, router]);
+        listAllUsers()
+            .then(setUsers)
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, []);
 
-    useEffect(() => {
-        if (isAdmin) {
-            listAllUsers()
-                .then(setUsers)
-                .catch(console.error)
-                .finally(() => setLoading(false));
-        }
-    }, [isAdmin]);
-
-    if (authLoading || !isAdmin) {
+    if (authLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <p>Loading...</p>

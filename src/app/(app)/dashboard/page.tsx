@@ -4,7 +4,7 @@
 import { Header } from '@/components/header';
 import { StatsCard } from '@/components/stats-card';
 import { useAuth } from '@/contexts/auth-context';
-import { ArrowRight, FileText, HandCoins, Newspaper, Receipt, ReceiptText, Users } from 'lucide-react';
+import { ArrowRight, FileText, HandCoins, Newspaper, Receipt, ReceiptText, Users, UserCog } from 'lucide-react';
 import Link from 'next/link';
 
 const allLinks = [
@@ -13,13 +13,13 @@ const allLinks = [
     { href: '/sales-invoice/new', label: 'New Sales Invoice', icon: ReceiptText },
     { href: '/payment-receipt/new', label: 'New Payment Receipt', icon: HandCoins },
     { href: '/vendors/new', label: 'New Vendor', icon: Users },
-    { href: '/users', label: 'User Management', icon: Users, admin: true },
+    { href: '/users', label: 'User Management', icon: UserCog },
 ];
 
 export default function DashboardPage() {
-    const { user, isAdmin } = useAuth();
+    const { user } = useAuth();
     
-    const quickLinks = allLinks.filter(link => !link.admin || isAdmin);
+    const quickLinks = allLinks;
 
     return (
         <div className="flex flex-1 flex-col">
