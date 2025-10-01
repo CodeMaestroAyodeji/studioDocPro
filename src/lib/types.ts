@@ -3,6 +3,7 @@
 
 
 
+
 export type Signatory = {
   id: string;
   name: string;
@@ -138,9 +139,9 @@ export type AppUser = {
     uid: string;
     email?: string;
     displayName?: string;
-    role: UserRole;
-    lastSignInTime?: string;
     photoURL?: string;
     disabled: boolean;
     emailVerified: boolean;
+    role?: UserRole;
+    lastSignInTime?: string;
 };

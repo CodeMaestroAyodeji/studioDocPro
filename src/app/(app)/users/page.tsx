@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Header } from '@/components/header';
-import { listAllUsers, type AppUser } from '@/ai/flows/list-users';
+import { listAllUsers } from '@/ai/flows/list-users';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { AppUser } from '@/lib/types';
 
 export default function UserManagementPage() {
     const { user: authUser, loading: authLoading } = useAuth();
@@ -82,7 +83,7 @@ export default function UserManagementPage() {
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
                                                     <Avatar>
-                                                        <AvatarImage src={user.photoURL} alt={user.displayName} />
+                                                        {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName} />}
                                                         <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
                                                     </Avatar>
                                                     <div>

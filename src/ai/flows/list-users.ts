@@ -9,14 +9,9 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import * as admin from 'firebase-admin';
+import { admin } from '@/lib/firebase-admin';
+import type { AppUser } from '@/lib/types';
 
-// Initialize Firebase Admin SDK if not already initialized
-if (admin.apps.length === 0) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-  });
-}
 
 const AppUserSchema = z.object({
   uid: z.string(),
@@ -29,7 +24,6 @@ const AppUserSchema = z.object({
   lastSignInTime: z.string().optional(),
 });
 
-export type AppUser = z.infer<typeof AppUserSchema>;
 
 const ListUsersOutputSchema = z.object({
   users: z.array(AppUserSchema),
@@ -66,7 +60,7 @@ const listUsersFlow = ai.defineFlow(
       photoURL: user.photoURL,
       disabled: user.disabled,
       emailVerified: user.emailVerified,
-      role: user.role,
+      role: user.role as AppUser['role'],
       lastSignInTime: user.metadata.lastSignInTime,
     }));
 
