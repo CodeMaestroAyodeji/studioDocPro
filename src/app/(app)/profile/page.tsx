@@ -5,7 +5,7 @@ import { useCompanyProfile } from '@/contexts/company-profile-context';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -37,7 +37,7 @@ const profileSchema = z.object({
   tin: z.string().optional(),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
-  website: z.string().url('Invalid URL'),
+  website: z.string().url('Invalid URL').optional().or(z.literal('')),
   logoUrl: z.string().url('Logo is required').min(1, 'Logo is required'),
   signatories: z.array(signatorySchema),
   bankAccounts: z.array(bankAccountSchema),
@@ -54,6 +54,7 @@ export default function ProfilePage() {
     defaultValues: {
       ...state,
       tin: state.tin || '',
+      website: state.website || '',
     },
   });
 
@@ -71,6 +72,7 @@ export default function ProfilePage() {
     form.reset({
       ...state,
       tin: state.tin || '',
+      website: state.website || '',
     });
   }, [state, form]);
 
@@ -102,7 +104,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <Header title="Edit Company Profile" />
+      <Header title="Company Profile" />
       <main className="flex-1 p-4 sm:px-6 sm:py-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

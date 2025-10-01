@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,7 @@ export default function LandingPage() {
               {user ? (
                 <>
                     <Button variant="ghost" asChild>
-                        <Link href="/purchase-order">Dashboard</Link>
+                        <Link href="/dashboard">Dashboard</Link>
                     </Button>
                     <UserProfileButton />
                 </>
@@ -67,7 +68,7 @@ export default function LandingPage() {
                 </p>
                 <div className="mt-10 flex items-center justify-center gap-x-6">
                     <Button size="lg" asChild>
-                        <Link href={user ? "/purchase-order" : "/signup"}>
+                        <Link href={user ? "/dashboard" : "/signup"}>
                         Get Started for Free
                         <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>

@@ -2,7 +2,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Building2, Newspaper, Receipt, ReceiptText, HandCoins, Users } from 'lucide-react';
+import { Building2, Newspaper, Receipt, ReceiptText, HandCoins, Users, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
 
 import {
@@ -12,6 +12,11 @@ import {
 } from '@/components/ui/sidebar';
 
 const links = [
+    {
+    href: '/dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+  },
   {
     href: '/purchase-order',
     label: 'Purchase Orders',
@@ -43,7 +48,7 @@ const links = [
     icon: ReceiptText,
   },
   {
-    href: '/profile',
+    href: '/profile/view',
     label: 'Company Profile',
     icon: Building2,
   },
@@ -58,7 +63,7 @@ export function SidebarNav() {
         <SidebarMenuItem key={link.href}>
           <Link href={link.href} passHref>
             <SidebarMenuButton
-              isActive={pathname.startsWith(link.href)}
+              isActive={pathname === link.href || (link.href !== '/dashboard' && pathname.startsWith(link.href))}
               tooltip={link.label}
               asChild
             >
