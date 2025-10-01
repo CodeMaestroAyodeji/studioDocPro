@@ -13,6 +13,7 @@ const allLinks = [
     { href: '/sales-invoice/new', label: 'New Sales Invoice', icon: ReceiptText },
     { href: '/payment-receipt/new', label: 'New Payment Receipt', icon: HandCoins },
     { href: '/vendors/new', label: 'New Vendor', icon: Users },
+    { href: '/users', label: 'User Management', icon: UserCog },
 ];
 
 export default function DashboardPage() {

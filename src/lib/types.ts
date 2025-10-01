@@ -127,3 +127,14 @@ export type VendorInvoice = {
   items: VendorInvoiceItem[];
   notes?: string;
 };
+
+export type UserRole = 'Admin' | 'Accountant' | 'Project Manager';
+
+export type AppUser = {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  lastSignInTime: string;
+  photoURL?: string;
+};

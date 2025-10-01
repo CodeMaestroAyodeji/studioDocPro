@@ -52,6 +52,11 @@ const allLinks = [
     label: 'Company Profile',
     icon: Building2,
   },
+   {
+    href: '/users',
+    label: 'User Management',
+    icon: UserCog,
+  },
 ];
 
 export function SidebarNav() {
