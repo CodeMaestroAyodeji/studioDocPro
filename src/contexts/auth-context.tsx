@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AppUser } from '@/lib/types';
@@ -24,17 +24,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
       setUser(user);
       if (user) {
-        // Fetch user profile from Firestore
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           setAppUser(userDoc.data() as AppUser);
         } else {
-            // This case might happen if user was created before firestore profile was implemented
-            // Or if there's a delay. We can set a default or handle as an error.
-            setAppUser(null);
+            // This is a new user, create their profile document.
+            const newUserProfile: AppUser = {
+                uid: user.uid,
+                email: user.email!,
+                name: user.displayName || 'New User',
+                role: 'Project Manager', // Default role
+            };
+            await setDoc(userDocRef, newUserProfile);
+            setAppUser(newUserProfile);
         }
       } else {
         setAppUser(null);
@@ -58,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, appUser, loading }}>
+    <AuthContext.Provider value={{ user, appUser, loading: loading && !user }}>
       {children}
     </AuthContext.Provider>
   );

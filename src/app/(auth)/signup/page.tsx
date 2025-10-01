@@ -7,15 +7,13 @@ import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import Link from 'next/link';
-import { doc, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { auth, db } from '@/lib/firebase';
-import type { AppUser } from '@/lib/types';
+import { auth } from '@/lib/firebase';
 
 
 const signupSchema = z.object({
@@ -42,14 +40,7 @@ export default function SignupPage() {
       const { user } = userCredential;
       await updateProfile(user, { displayName: values.name });
 
-      // Create user profile in Firestore
-      const userProfile: AppUser = {
-        uid: user.uid,
-        email: user.email!,
-        name: values.name,
-        role: 'Project Manager', // Default role
-      };
-      await setDoc(doc(db, 'users', user.uid), userProfile);
+      // The user document will be created by the AuthProvider's onAuthStateChanged listener.
       
       toast({
         title: 'Account Created',

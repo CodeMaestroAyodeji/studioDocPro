@@ -19,7 +19,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return <div>Loading...</div>; // Or a proper loading skeleton
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <p>Loading...</p>
+        </div>
+    );
   }
 
   return (
