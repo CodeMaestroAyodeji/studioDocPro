@@ -24,7 +24,6 @@ export function UserProfileButton() {
   const router = useRouter();
   const { toast } = useToast();
   
-  // useSidebar is now optional. It will be null if not in a SidebarProvider.
   const sidebar = useSidebar();
   const sidebarState = sidebar?.state;
 
@@ -72,6 +71,10 @@ export function UserProfileButton() {
       <DropdownMenuContent className="w-56" align={sidebarState === 'collapsed' ? 'start' : 'end'}>
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
+         <DropdownMenuItem onClick={() => router.push('/user-profile')}>
+          <UserIcon className="mr-2 h-4 w-4" />
+          <span>My Profile</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
