@@ -79,7 +79,14 @@ export default function VendorInvoiceListPage() {
     },
   ];
   
-  const searchFields = ['invoiceNumber', 'vendorName', 'projectName'];
+  // const searchFields = ['invoiceNumber', 'vendorName', 'projectName'];
+
+  const searchFields: (keyof VendorInvoice)[] = [
+  'invoiceNumber',
+  'vendorId',
+  'projectName',
+];
+
 
   return (
     <div className="flex flex-1 flex-col">

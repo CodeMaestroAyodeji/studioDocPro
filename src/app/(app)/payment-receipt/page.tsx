@@ -49,7 +49,14 @@ export default function PaymentReceiptListPage() {
     { accessor: 'paymentType', header: 'Payment Type' },
   ];
   
-  const searchFields = ['receiptNumber', 'receivedFrom', 'relatedInvoiceNumber'];
+  // const searchFields = ['receiptNumber', 'receivedFrom', 'relatedInvoiceNumber'];
+
+  const searchFields: (keyof PaymentReceipt)[] = [
+  'receiptNumber',
+  'receivedFrom',
+  'relatedInvoiceNumber',
+];
+
 
   return (
     <div className="flex flex-1 flex-col">

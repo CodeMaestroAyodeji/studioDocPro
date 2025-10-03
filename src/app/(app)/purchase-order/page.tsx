@@ -44,7 +44,13 @@ export default function PurchaseOrderListPage() {
     },
   ];
   
-  const searchFields = ['poNumber', 'vendor', 'projectName'];
+  const searchFields: (keyof PurchaseOrder)[] = [
+  'poNumber',
+  'vendor',
+  'projectName',
+];
+
+  
 
   return (
     <div className="flex flex-1 flex-col">

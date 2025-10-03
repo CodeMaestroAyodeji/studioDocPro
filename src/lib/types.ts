@@ -18,7 +18,7 @@ export type CompanyProfile = {
   tin?: string;
   email: string;
   phone: string;
-  website: string;
+  website?: string;
   logoUrl: string;
   signatories: Signatory[];
   bankAccounts: BankAccount[];
@@ -113,7 +113,7 @@ export type VendorInvoiceItem = {
   description: string;
   quantity: number;
   rate: number;
-  discount: number;
+  discount?: number;
   tax: boolean;
 };
 

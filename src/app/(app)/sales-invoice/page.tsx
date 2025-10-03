@@ -49,7 +49,13 @@ export default function SalesInvoiceListPage() {
     },
   ];
   
-  const searchFields = ['invoiceNumber', 'billTo'];
+  // const searchFields = ['invoiceNumber', 'billTo'];
+
+  const searchFields: (keyof SalesInvoice)[] = [
+  'invoiceNumber',
+  'billTo',
+];
+
 
   return (
     <div className="flex flex-1 flex-col">

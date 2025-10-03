@@ -48,7 +48,12 @@ export default function PaymentVoucherListPage() {
     },
   ];
   
-  const searchFields = ['voucherNumber', 'payeeName', 'description'];
+  const searchFields: (keyof PaymentVoucher)[] = [
+  'voucherNumber',
+  'payeeName',
+  'description',
+];
+
 
   return (
     <div className="flex flex-1 flex-col">

@@ -1,6 +1,6 @@
 # DocuPro - Business Document Generator
 
-This is a Next.js application built using Firebase Studio to streamline the creation and management of essential business documents. The app currently supports generating Purchase Orders, Payment Vouchers, Sales Invoices, and more, with a focus on professional formatting and automated calculations.
+This is a Next.js application built to streamline the creation and management of essential business documents. The app is fully containerized with Docker and uses a PostgreSQL database managed by Prisma.
 
 ## Core Features
 
@@ -23,24 +23,73 @@ This is a Next.js application built using Firebase Studio to streamline the crea
 - **Print & PDF**: All final documents are optimized for printing to A4 or saving as a PDF, with professional layouts and branding.
 - **Branded Footer**: Documents include a centered footer with the company's name, address, and contact details.
 
-## Next Steps & Future Recommendations
+## Technology Stack
 
-While the core functionality is robust, here are some recommendations for what we can work on next to enhance the application:
+- **Framework**: Next.js
+- **Database**: PostgreSQL
+- **ORM**: Prisma
+- **Containerization**: Docker & Docker Compose
+- **Styling**: Tailwind CSS with shadcn/ui
+- **Language**: TypeScript
+- **AI**: Google Gemini (via Genkit)
 
-1.  **Full Database Integration with Firestore**:
-    - **What**: Migrate all data (documents, profiles, users) from the browser's local storage to a secure Firestore database.
-    - **Why**: This is the most critical next step. It will ensure data is persistent, secure, and accessible across different devices. Local storage is temporary and not suitable for a production application.
+## Getting Started
 
-2.  **Activate User Management**:
-    - **What**: Connect the User Management UI to a backend service (using Genkit and Firebase Admin SDK) to allow Admins to actually invite, edit roles for, and delete users.
-    - **Why**: This will enable true multi-user collaboration and role-based access control, which is essential for team-based workflows.
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running on your machine.
 
-3.  **Role-Based Dashboards & Access Control**:
-    - **What**: Customize the dashboard and restrict access to certain pages or features based on the logged-in user's role (e.g., an 'Accountant' might not see 'Purchase Orders').
-    - **Why**: This will tailor the user experience to each role, improving efficiency and security.
+### 1. Set up Environment Variables
+Create a new file named `.env` in the root of the project directory and add the following line. This file is already in `.gitignore`, so it will not be committed.
 
-4.  **Advanced AI Features**:
-    - **What**: Use Genkit to implement features like "Invoice to PO" or "Email to Voucher" conversion, where the AI can parse an uploaded document or pasted text to pre-fill form fields automatically.
-    - **Why**: This would dramatically speed up the data entry process and reduce manual errors.
+```
+DATABASE_URL="postgresql://user:password@localhost:5432/mydatabase"
+```
 
-I am ready to proceed with any of these enhancements when you are.
+### 2. Build and Run the Application
+Open your terminal in the project root and run the following command:
+
+```bash
+docker-compose up -d --build
+```
+This command will build the Docker images for the application and the database, and then start them in the background. The initial build may take a few minutes.
+
+The application will be available at **[http://localhost:3000](http://localhost:3000)**.
+
+## Development Workflow
+
+This project is configured to run entirely within Docker containers. Follow these instructions when making changes.
+
+### Making Code Changes
+If you change the application's source code (e.g., in `.tsx` or `.ts` files), you must rebuild the `app` container to see your changes. Use the same command you used to start the app:
+```bash
+docker-compose up -d --build
+```
+
+### Updating the Database Schema
+If you modify the `prisma/schema.prisma` file, you need to create a new database migration and apply it.
+1.  Make your changes in `prisma/schema.prisma`.
+2.  Run the following command in your terminal, replacing `<migration-name>` with a short, descriptive name for your changes (e.g., `add-product-table`).
+```bash
+docker-compose exec app npx prisma migrate dev --name <migration-name>
+```
+
+### Adding New Dependencies
+If you add a new dependency to `package.json`, you need to rebuild the image to install it.
+```bash
+docker-compose up -d --build
+```
+
+## Useful Docker Commands
+
+- **Stop the application:**
+  ```bash
+  docker-compose down
+  ```
+- **View running services:**
+  ```bash
+  docker-compose ps
+  ```
+- **View application logs in real-time:**
+  ```bash
+  docker-compose logs -f app
+  ```

@@ -46,7 +46,7 @@ export function InvoiceTemplate2({ vendor, invoice, companyProfile, subtotal, to
         </section>
 
         <section className="mb-8">
-             {isEditing ? <EditableTemplateFields form={form} formatCurrency={formatCurrency} /> : (
+             {isEditing && form ? <EditableTemplateFields form={form} formatCurrency={formatCurrency} /> : (
                 <Table>
                     <TableHeader>
                         <TableRow>
