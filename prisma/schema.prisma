@@ -10,7 +10,40 @@ datasource db {
 
 // Example model
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id             Int      @id @default(autoincrement())
+  email          String   @unique
+  name           String?
+  photoURL       String?
+  role           String?
+  lastSignInTime DateTime?
+
+  @@map("users")
+}
+
+model SalesInvoice {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  @@map("sales_invoices")
+}
+
+model PaymentVoucher {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  @@map("payment_vouchers")
+}
+
+model PurchaseOrder {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  @@map("purchase_orders")
+}
+
+model Vendor {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  @@map("vendors")
 }

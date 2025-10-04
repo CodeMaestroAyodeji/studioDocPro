@@ -11,6 +11,10 @@ RUN npm install
 # Copy the rest of the application source code
 COPY . .
 
+# Make DATABASE_URL available during the build
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Build the Next.js application
 RUN npm run build
 

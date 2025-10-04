@@ -1,11 +1,10 @@
-
-'use client';
-
 import { Header } from '@/components/header';
 import { StatsCard } from '@/components/stats-card';
-import { useAuth } from '@/contexts/auth-context';
-import { ArrowRight, FileText, HandCoins, Newspaper, Receipt, ReceiptText, Users, UserCog } from 'lucide-react';
+import { ArrowRight, Newspaper, Receipt, ReceiptText, HandCoins, Users, UserCog } from 'lucide-react';
 import Link from 'next/link';
+import db from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 
 const allLinks = [
     { href: '/purchase-order/new', label: 'New Purchase Order', icon: Newspaper },
@@ -16,21 +15,43 @@ const allLinks = [
     { href: '/users', label: 'User Management', icon: UserCog },
 ];
 
-export default function DashboardPage() {
-    const { user } = useAuth();
-    
+export default async function DashboardPage() {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(new Date().setDate(today.getDate() - 30));
+
+    const [
+        invoiceCount,
+        voucherCount,
+        poCount,
+        vendorCount,
+        invoicesThisMonth,
+        vouchersThisMonth,
+        posThisMonth,
+        vendorsThisMonth
+    ] = await Promise.all([
+        db.salesInvoice.count(),
+        db.paymentVoucher.count(),
+        db.purchaseOrder.count(),
+        db.vendor.count(),
+        db.salesInvoice.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+        db.paymentVoucher.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+        db.purchaseOrder.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+        db.vendor.count({ where: { createdAt: { gte: thirtyDaysAgo } } })
+    ]);
+
     const quickLinks = allLinks;
 
     return (
         <div className="flex flex-1 flex-col">
-            <Header title={`Welcome, ${user?.displayName || 'User'}!`} />
+            {/* The user's name can be added back once server-side auth is implemented */}
+            <Header title={`Welcome!`} />
             <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-8">
                 <section>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <StatsCard title="Sales Invoices" value="12" description="+2 this month" />
-                        <StatsCard title="Payment Vouchers" value="32" description="+5 this month" />
-                        <StatsCard title="Purchase Orders" value="21" description="3 pending approval" />
-                        <StatsCard title="Vendors" value="8" description="+1 new vendor" />
+                        <StatsCard title="Sales Invoices" value={invoiceCount.toString()} description={`+${invoicesThisMonth} this month`} />
+                        <StatsCard title="Payment Vouchers" value={voucherCount.toString()} description={`+${vouchersThisMonth} this month`} />
+                        <StatsCard title="Purchase Orders" value={poCount.toString()} description={`+${posThisMonth} this month`} />
+                        <StatsCard title="Vendors" value={vendorCount.toString()} description={`+${vendorsThisMonth} this month`} />
                     </div>
                 </section>
                 

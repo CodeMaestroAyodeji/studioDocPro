@@ -69,7 +69,7 @@ export default function LandingPage() {
                 <div className="mt-10 flex items-center justify-center gap-x-6">
                     <Button size="lg" asChild>
                         <Link href={user ? "/dashboard" : "/signup"}>
-                        Get Started for Free
+                        Get Started
                         <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                     </Button>

@@ -1,17 +1,24 @@
+version: "3.9"
+
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # ✅ Dummy URL during build (so Next.js can compile even without DB)
+        DATABASE_URL: postgresql://placeholder:placeholder@placeholder:5432/placeholder
     container_name: studiodocpro-app
     ports:
-      - "3000:3000"
+      - "9002:3000" # ✅ Expose app's internal port 3000 to host 9002
     environment:
+      # ✅ Real DB URL used at runtime
       DATABASE_URL: postgresql://user:password@db:5432/mydatabase
+      NODE_ENV: production
     depends_on:
       db:
         condition: service_healthy
-    command: sh -c "npm run db:migrate && node server.js"
+    command: sh -c "npm run db:migrate && npm start"
     restart: unless-stopped
 
   db:
