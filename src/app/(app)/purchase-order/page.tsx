@@ -1,4 +1,3 @@
-
 'use client';
 
 import { DocumentList } from '@/components/document-list';
@@ -8,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { withAuthorization } from '@/components/with-authorization';
+import { PERMISSIONS } from '@/lib/roles';
 
 type StoredPurchaseOrder = Omit<PurchaseOrder, 'date'> & { date: string };
 
@@ -30,7 +31,7 @@ const getPOs = (): PurchaseOrder[] => {
   return pos.sort((a, b) => b.date.getTime() - a.date.getTime());
 };
 
-export default function PurchaseOrderListPage() {
+function PurchaseOrderListPage() {
   const router = useRouter();
 
   const columns = [
@@ -73,3 +74,5 @@ export default function PurchaseOrderListPage() {
     </div>
   );
 }
+
+export default withAuthorization(PurchaseOrderListPage, PERMISSIONS.PURCHASE_ORDER_VIEW);

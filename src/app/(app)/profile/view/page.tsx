@@ -9,7 +9,10 @@ import { Separator } from '@/components/ui/separator';
 import { Header } from '@/components/header';
 import { Pencil } from 'lucide-react';
 
-export default function ProfileViewPage() {
+import { withAuthorization } from '@/components/with-authorization';
+import { PERMISSIONS } from '@/lib/roles';
+
+function ProfileViewPage() {
   const { state: profile } = useCompanyProfile();
   const router = useRouter();
 
@@ -107,3 +110,5 @@ export default function ProfileViewPage() {
     </div>
   );
 }
+
+export default withAuthorization(ProfileViewPage, PERMISSIONS.COMPANY_PROFILE_VIEW);

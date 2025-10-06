@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { withAuthorization } from '@/components/with-authorization';
+import { PERMISSIONS } from '@/lib/roles';
 
 type StoredPaymentReceipt = Omit<PaymentReceipt, 'date'> & { date: string };
 
@@ -30,7 +32,7 @@ const getReceipts = (): PaymentReceipt[] => {
   return receipts.sort((a, b) => b.date.getTime() - a.date.getTime());
 };
 
-export default function PaymentReceiptListPage() {
+function PaymentReceiptListPage() {
   const router = useRouter();
 
   const columns = [
@@ -80,3 +82,6 @@ export default function PaymentReceiptListPage() {
     </div>
   );
 }
+
+export default withAuthorization(PaymentReceiptListPage, PERMISSIONS.PAYMENT_RECEIPT_VIEW);
+

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { withAuthorization } from '@/components/with-authorization';
+import { PERMISSIONS } from '@/lib/roles';
 
 type StoredSalesInvoice = Omit<SalesInvoice, 'date' | 'dueDate'> & { date: string; dueDate: string };
 
@@ -31,7 +33,7 @@ const getInvoices = (): SalesInvoice[] => {
   return invoices.sort((a, b) => b.date.getTime() - a.date.getTime());
 };
 
-export default function SalesInvoiceListPage() {
+function SalesInvoiceListPage() {
   const router = useRouter();
 
   const columns = [
@@ -79,3 +81,6 @@ export default function SalesInvoiceListPage() {
     </div>
   );
 }
+
+export default withAuthorization(SalesInvoiceListPage, PERMISSIONS.SALES_INVOICE_VIEW);
+

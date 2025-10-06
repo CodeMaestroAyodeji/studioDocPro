@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { withAuthorization } from '@/components/with-authorization';
+import { PERMISSIONS } from '@/lib/roles';
 
 type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
 
@@ -30,7 +32,7 @@ const getVouchers = (): PaymentVoucher[] => {
   return vouchers.sort((a, b) => b.date.getTime() - a.date.getTime());
 };
 
-export default function PaymentVoucherListPage() {
+function PaymentVoucherListPage() {
   const router = useRouter();
 
   const columns = [
@@ -76,3 +78,6 @@ export default function PaymentVoucherListPage() {
     </div>
   );
 }
+
+export default withAuthorization(PaymentVoucherListPage, PERMISSIONS.PAYMENT_VOUCHER_VIEW);
+

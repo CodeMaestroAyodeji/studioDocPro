@@ -10,6 +10,8 @@ import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { getVendors } from '@/lib/vendor-utils';
 import { useState, useEffect } from 'react';
+import { withAuthorization } from '@/components/with-authorization';
+import { PERMISSIONS } from '@/lib/roles';
 
 type StoredVendorInvoice = Omit<VendorInvoice, 'invoiceDate' | 'dueDate'> & { invoiceDate: string; dueDate: string };
 
@@ -60,7 +62,7 @@ const getVendorInvoices = (): (VendorInvoice & { vendorName?: string; grandTotal
   return invoices.sort((a, b) => b.invoiceDate.getTime() - a.invoiceDate.getTime());
 };
 
-export default function VendorInvoiceListPage() {
+function VendorInvoiceListPage() {
   const router = useRouter();
 
   const columns = [
@@ -110,3 +112,6 @@ export default function VendorInvoiceListPage() {
     </div>
   );
 }
+
+export default withAuthorization(VendorInvoiceListPage, PERMISSIONS.VENDOR_INVOICE_VIEW);
+

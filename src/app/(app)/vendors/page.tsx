@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
 import { getVendors } from '@/lib/vendor-utils';
 import { useState, useEffect, useCallback } from 'react';
+import { withAuthorization } from '@/components/with-authorization';
+import { PERMISSIONS } from '@/lib/roles';
 
 const invoiceTemplates = [
   { id: 'template-1', name: 'Classic Professional' },
@@ -18,7 +20,7 @@ const invoiceTemplates = [
   { id: 'template-5', name: 'Corporate Formal' },
 ];
 
-export default function VendorListPage() {
+function VendorListPage() {
   const router = useRouter();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vendorInvoiceMap, setVendorInvoiceMap] = useState<Record<string, boolean>>({});
@@ -97,3 +99,6 @@ export default function VendorListPage() {
     </div>
   );
 }
+
+export default withAuthorization(VendorListPage, PERMISSIONS.VENDOR_VIEW);
+
