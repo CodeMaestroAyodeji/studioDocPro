@@ -28,22 +28,25 @@ const roleUpdateSchema = z.object({
   role: z.string(),
 });
 
-// ✅ Do not explicitly type `context` — let Next.js infer it
-export async function PUT(request: Request, context: any) {
-  const { params } = context;
-
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
   const headersList = await headers();
   const isAdmin = await verifyAdmin(headersList.get('Authorization'));
   if (!isAdmin) return new NextResponse('Forbidden', { status: 403 });
 
   try {
+    const url = request.url;
+    const id = url.substring(url.lastIndexOf('/') + 1);
+
     const body = await request.json();
     const { role } = roleUpdateSchema.parse(body);
 
     const updatedUser = await db.user.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { role },
     });
+
+    // Also update in Firebase as a custom claim
+    await admin.auth().setCustomUserClaims(id, { role: role });
 
     return NextResponse.json(updatedUser);
   } catch (error) {
@@ -55,16 +58,16 @@ export async function PUT(request: Request, context: any) {
   }
 }
 
-export async function DELETE(request: Request, context: any) {
-  const { params } = context;
-
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const headersList = await headers();
   const authHeader = headersList.get('Authorization');
   const isAdmin = await verifyAdmin(authHeader);
   if (!isAdmin) return new NextResponse('Forbidden', { status: 403 });
 
   try {
-    const { id } = params;
+    const url = request.url;
+    const id = url.substring(url.lastIndexOf('/') + 1);
+
     if (!authHeader) {
       return new NextResponse('Unauthorized', { status: 401 });
     }

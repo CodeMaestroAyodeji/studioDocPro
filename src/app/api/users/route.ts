@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/prisma';
 import { z } from 'zod';
+import { adminAuth } from '@/lib/firebase-admin'; // ✅ use your existing admin setup
 
 const userSchema = z.object({
   id: z.string(),
@@ -19,32 +20,34 @@ export async function POST(request: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
+    // ✅ Verify the Firebase token
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const firebaseUid = decodedToken.uid;
+
     const body = await request.json();
     const userData = userSchema.parse(body);
 
-    // Check if user already exists to make this endpoint idempotent
-    const existingUser = await db.user.findUnique({
-      where: {
-        id: userData.id,
-      },
-    });
-
-    if (existingUser) {
-      return NextResponse.json(existingUser, { status: 200 });
+    if (firebaseUid !== userData.id) {
+      return new NextResponse('Token user ID mismatch', { status: 403 });
     }
 
-    const newUser = await db.user.create({
-      data: {
+    const user = await db.user.upsert({
+      where: { email: userData.email },
+      update: {
+        id: userData.id,
+        name: userData.name,
+        photoURL: userData.photoURL,
+      },
+      create: {
         id: userData.id,
         email: userData.email,
         name: userData.name,
         photoURL: userData.photoURL,
-        // The role will be set to the default value 'User' from the schema
       },
     });
 
-    return NextResponse.json(newUser, { status: 201 });
-  } catch (error) {
+    return NextResponse.json(user, { status: 200 });
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
@@ -52,3 +55,4 @@ export async function POST(request: Request) {
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }
+

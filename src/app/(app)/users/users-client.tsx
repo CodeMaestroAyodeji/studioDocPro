@@ -1,3 +1,4 @@
+// src/app/(app)/users/users-client.tsx 
 
 'use client';
 
@@ -54,7 +55,7 @@ const roles: UserRole[] = ["Admin", "Project Manager", "Accountant"];
 export function UsersClient({ initialUsers }: { initialUsers: UserForClient[] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [users, setUsers] = useState<UserForClient[]>(initialUsers);
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, refreshUser } = useAuth();
   const { toast } = useToast();
   const [editingUser, setEditingUser] = useState<UserForClient | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -139,7 +140,7 @@ export function UsersClient({ initialUsers }: { initialUsers: UserForClient[] })
     }
 
     try {
-      const token = await firebaseUser.getIdToken();
+      const token = await firebaseUser.getIdToken(true); // Force refresh of token
       const response = await fetch(`/api/users/${editingUser.id}`, {
         method: 'PUT',
         headers: {
@@ -155,8 +156,14 @@ export function UsersClient({ initialUsers }: { initialUsers: UserForClient[] })
       }
 
       const updatedUser = await response.json();
-      setUsers(users.map(u => u.id === updatedUser.id ? { ...u, role: updatedUser.role } : u));
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
       toast({ title: 'Role Updated', description: `Role for ${editingUser.name} updated to ${selectedRole}.` });
+      
+      // Refresh the currently logged-in user's data if they are the one being edited
+      if (firebaseUser && editingUser?.id === firebaseUser.uid) {
+        await refreshUser();
+      }
+
       setIsEditDialogOpen(false);
       setEditingUser(null);
 
