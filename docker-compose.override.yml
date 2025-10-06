@@ -1,0 +1,26 @@
+# docker-compose.override.yml
+# Development-specific overrides for the 'app' service.
+
+version: "3.9"
+
+services:
+  app:
+    build:
+      target: builder # Use the 'builder' stage which has all dev dependencies
+    container_name: studiodocpro-app-dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      # Sync our local code into the container
+      - .:/app
+      # Use a named volume to persist node_modules, preventing re-installs
+      # and isolating it from your local node_modules.
+      - node_modules_cache:/app/node_modules
+    # Command to install dependencies (if needed) and start the dev server
+    command: sh -c "npm install && npm run dev"
+    # Don't restart in dev, and change the command to run the dev server
+    restart: "no"
+
+volumes:
+  node_modules_cache:
+    name: studiodocpro-node-modules-cache

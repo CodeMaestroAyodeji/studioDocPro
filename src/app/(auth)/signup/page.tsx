@@ -35,11 +35,33 @@ export default function SignupPage() {
 
   const onSubmit = async (values: z.infer<typeof signupSchema>) => {
     try {
+      // 1. Create user in Firebase
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const { user } = userCredential;
 
+      // 2. Update Firebase profile
       await updateProfile(user, { displayName: values.name });
-      
+
+      // 3. Sync user to local database
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: user.uid,
+          email: user.email,
+          name: values.name,
+        }),
+      });
+
+      if (!response.ok) {
+        // In a real app, you might want to handle this more gracefully,
+        // e.g., by deleting the Firebase user or having a retry mechanism.
+        console.error('Failed to sync user to database');
+        throw new Error('An error occurred while setting up your account.');
+      }
+
       toast({
         title: 'Account Created',
         description: "You've been successfully signed up!",

@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,13 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Example model
 model User {
-  id             Int      @id @default(autoincrement())
-  email          String   @unique
+  id             String    @id
+  email          String    @unique
   name           String?
   photoURL       String?
-  role           String?
+  role           String    @default("User")
   lastSignInTime DateTime?
 
   @@map("users")

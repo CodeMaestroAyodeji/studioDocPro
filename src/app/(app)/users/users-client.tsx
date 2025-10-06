@@ -13,18 +13,52 @@ import type { AppUser, UserRole } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { User } from '@prisma/client';
+import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
 
 // This component now receives the initial list of users as a prop.
 // The AppUser type from the old mock data might be slightly different from the Prisma User type.
 // We'll cast the Prisma users to a compatible type for now.
 type UserForClient = Omit<User, 'lastSignInTime'> & { lastSignInTime: string | Date | null };
 
+const roles: UserRole[] = ["Admin", "Project Manager", "Accountant"];
 
 export function UsersClient({ initialUsers }: { initialUsers: UserForClient[] }) {
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // The user list is now managed by this component, starting with the server-fetched data.
   const [users, setUsers] = useState<UserForClient[]>(initialUsers);
+  const { firebaseUser } = useAuth();
+  const { toast } = useToast();
+  const [editingUser, setEditingUser] = useState<UserForClient | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<UserRole | ''>( '');
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return users;
@@ -50,16 +84,85 @@ export function UsersClient({ initialUsers }: { initialUsers: UserForClient[] })
   };
 
   const handleInviteUser = () => {
-    // Placeholder for future functionality
+    // To implement user invites, you would:
+    // 1. Create a dialog with a form to capture the new user's email and role.
+    // 2. On form submission, make a POST request to the `/api/users` endpoint.
+    // 3. The backend would then:
+    //    a. Create the user in Firebase Authentication.
+    //    b. Firebase would send an invitation/welcome email.
+    //    c. Create the user in the local Prisma database.
+    // 4. On the client, you would then update the user list with the new user.
     alert('Feature to invite a new user is not yet implemented.');
   };
   
-  const handleEditUser = (userId: number) => {
-     alert(`Editing user ${userId} is not yet implemented.`);
+  const handleEditUser = (userId: string) => {
+    const userToEdit = users.find(u => u.id === userId);
+    if (userToEdit) {
+      setEditingUser(userToEdit);
+      setSelectedRole(userToEdit.role as UserRole || '');
+      setIsEditDialogOpen(true);
+    }
   }
 
-  const handleDeleteUser = (userId: number) => {
-     alert(`Deleting user ${userId} is not yet implemented.`);
+  const handleDeleteUser = async (userId: string) => {
+    if (!firebaseUser) {
+      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to delete users.' });
+      return;
+    }
+
+    try {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete user.');
+      }
+
+      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
+      toast({ title: 'User Deleted', description: 'The user has been successfully deleted.' });
+
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
+    }
+  }
+
+  const handleRoleUpdate = async () => {
+    if (!firebaseUser || !editingUser || !selectedRole) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Invalid request.' });
+      return;
+    }
+
+    try {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role: selectedRole }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update role.');
+      }
+
+      const updatedUser = await response.json();
+      setUsers(users.map(u => u.id === updatedUser.id ? { ...u, role: updatedUser.role } : u));
+      toast({ title: 'Role Updated', description: `Role for ${editingUser.name} updated to ${selectedRole}.` });
+      setIsEditDialogOpen(false);
+      setEditingUser(null);
+
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+    }
   }
 
 
@@ -129,9 +232,23 @@ export function UsersClient({ initialUsers }: { initialUsers: UserForClient[] })
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleEditUser(user.id)}>Edit Role</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUser(user.id)}>
-                            Delete User
-                          </DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">Delete User</DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the user and their data.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUser(user.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                   </TableCell>
@@ -146,6 +263,35 @@ export function UsersClient({ initialUsers }: { initialUsers: UserForClient[] })
             )}
           </TableBody>
         </Table>
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                <DialogTitle>Edit Role for {editingUser?.name}</DialogTitle>
+                <DialogDescription>
+                    Select a new role for the user.
+                </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="role" className="text-right">Role</Label>
+                        <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as UserRole)}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {roles.map(role => (
+                                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleRoleUpdate}>Save Changes</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

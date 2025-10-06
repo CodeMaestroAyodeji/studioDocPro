@@ -39,7 +39,12 @@ export type IntelligentFieldCompletionOutput = z.infer<
 export async function intelligentFieldCompletion(
   input: IntelligentFieldCompletionInput
 ): Promise<IntelligentFieldCompletionOutput> {
-  return intelligentFieldCompletionFlow(input);
+  try {
+    return await intelligentFieldCompletionFlow(input);
+  } catch (error) {
+    console.error('Error in intelligentFieldCompletion flow:', error);
+    return { suggestedValue: '' };
+  }
 }
 
 const prompt = ai.definePrompt({
@@ -72,6 +77,10 @@ const intelligentFieldCompletionFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return {suggestedValue: output!.suggestedValue};
+    if (!output) {
+      console.error('intelligentFieldCompletionFlow: No output from prompt');
+      return {suggestedValue: ''};
+    }
+    return {suggestedValue: output.suggestedValue};
   }
 );

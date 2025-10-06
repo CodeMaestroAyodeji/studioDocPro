@@ -1,8 +1,11 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  /* config options here */
+
+  // ✅ Official way (Next.js 15.3+ supports this gradually)
+  allowedDevOrigins: ['http://localhost:9002', 'http://192.168.72.105:9002'],
+
   images: {
     remotePatterns: [
       {

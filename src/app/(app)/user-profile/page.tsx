@@ -60,22 +60,24 @@ export default function ProfileViewPage() {
           <CardHeader>
             <div className="flex items-center gap-6">
                  <Avatar className="h-20 w-20">
-                    {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || 'User'} />}
+                    {user.photoURL && <AvatarImage src={user.photoURL} alt={user.name || 'User'} />}
                     <AvatarFallback className="text-2xl">
-                        {user.displayName?.split(' ').map(n => n[0]).join('') || <UserIcon />}
+                        {user.name?.split(' ').map(n => n[0]).join('') || <UserIcon />}
                     </AvatarFallback>
                 </Avatar>
                 <div>
-                    <CardTitle className="text-3xl">{user.displayName}</CardTitle>
-                    <CardDescription>{user.email}</CardDescription>
+                    <CardTitle className="text-3xl">{user.name}</CardTitle>
+                    <CardDescription>{user.email} &bull; <span className="font-medium">{user.role}</span></CardDescription>
                 </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <Separator />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-              <DetailItem label="Full Name" value={user.displayName} />
+              <DetailItem label="Full Name" value={user.name} />
               <DetailItem label="Email Address" value={user.email} />
+              <DetailItem label="Role" value={user.role} />
+              <DetailItem label="Last Signed In" value={user.lastSignInTime ? new Date(user.lastSignInTime).toLocaleString() : 'N/A'} />
             </div>
           </CardContent>
         </Card>
