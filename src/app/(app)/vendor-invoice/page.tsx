@@ -3,92 +3,68 @@
 
 import { DocumentList } from '@/components/document-list';
 import { Header } from '@/components/header';
-import type { VendorInvoice, Vendor, VendorInvoiceItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { getVendors } from '@/lib/vendor-utils';
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { withAuthorization } from '@/components/with-authorization';
 import { PERMISSIONS } from '@/lib/roles';
+import { useAuth } from '@/contexts/auth-context';
+import { VendorInvoice, Vendor } from '@prisma/client';
 
-type StoredVendorInvoice = Omit<VendorInvoice, 'invoiceDate' | 'dueDate'> & { invoiceDate: string; dueDate: string };
-
-const TAX_RATE = 7.5; // 7.5% VAT
-
-const calculateGrandTotal = (items: VendorInvoiceItem[]): number => {
-    let subtotal = 0;
-    let totalDiscount = 0;
-    let totalTax = 0;
-
-    items.forEach(item => {
-      const amount = (item.quantity || 0) * (item.rate || 0);
-      const discount = item.discount || 0;
-      subtotal += amount;
-      totalDiscount += discount;
-      if (item.tax) {
-        totalTax += (amount - discount) * (TAX_RATE / 100);
-      }
-    });
-
-    return subtotal - totalDiscount + totalTax;
-};
-
-
-const getVendorInvoices = (): (VendorInvoice & { vendorName?: string; grandTotal?: number })[] => {
-  if (typeof window === 'undefined') return [];
-  
-  const vendors = getVendors();
-  const vendorMap = new Map(vendors.map(v => [v.id, v.companyName]));
-  
-  const invoices: (VendorInvoice & { vendorName?: string, grandTotal?: number })[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('vendor_invoice_')) {
-      const item = localStorage.getItem(key);
-      if (item) {
-        const storedInvoice: StoredVendorInvoice = JSON.parse(item);
-        invoices.push({
-            ...storedInvoice,
-            invoiceDate: new Date(storedInvoice.invoiceDate),
-            dueDate: new Date(storedInvoice.dueDate),
-            vendorName: vendorMap.get(storedInvoice.vendorId) || 'Unknown Vendor',
-            grandTotal: calculateGrandTotal(storedInvoice.items),
-        });
-      }
-    }
-  }
-  return invoices.sort((a, b) => b.invoiceDate.getTime() - a.invoiceDate.getTime());
-};
+interface VendorInvoiceWithVendor extends VendorInvoice {
+  vendor: Vendor;
+}
 
 function VendorInvoiceListPage() {
   const router = useRouter();
+  const { firebaseUser } = useAuth();
+  const [invoices, setInvoices] = useState<VendorInvoiceWithVendor[]>([]);
+
+  const getVendorInvoices = useCallback(async () => {
+    if (!firebaseUser) return;
+
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch('/api/vendor-invoices', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch vendor invoices");
+      return;
+    }
+    const data = await response.json();
+    setInvoices(data);
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    getVendorInvoices();
+  }, [getVendorInvoices]);
 
   const columns = [
     { accessor: 'invoiceNumber', header: 'Invoice #' },
-    { accessor: 'vendorName', header: 'Vendor' },
-    { accessor: 'projectName', header: 'Project' },
+    { 
+      accessor: 'vendor.name', 
+      header: 'Vendor',
+      cell: (value: any, item: VendorInvoiceWithVendor) => item.vendor.name
+    },
     { 
         accessor: 'invoiceDate', 
         header: 'Date',
-        cell: (value: Date) => format(value, 'dd/MM/yyyy'),
+        cell: (value: string) => format(new Date(value), 'dd/MM/yyyy'),
     },
     { 
-        accessor: 'grandTotal', 
+        accessor: 'total', 
         header: 'Amount',
         cell: (value: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value || 0),
     },
+    { accessor: 'status', header: 'Status' },
   ];
   
-  // const searchFields = ['invoiceNumber', 'vendorName', 'projectName'];
-
-  const searchFields: (keyof VendorInvoice)[] = [
-  'invoiceNumber',
-  'vendorId',
-  'projectName',
-];
-
+  const searchFields: (keyof VendorInvoice)[] = ['invoiceNumber', 'status'];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -100,9 +76,9 @@ function VendorInvoiceListPage() {
                 New Vendor Invoice
             </Button>
         </div>
-        <DocumentList
+        <DocumentList<VendorInvoiceWithVendor>
             columns={columns}
-            dataFetcher={getVendorInvoices}
+            data={invoices}
             searchFields={searchFields}
             storageKeyPrefix="vendor_invoice_"
             viewUrlPrefix="/vendor-invoice/"

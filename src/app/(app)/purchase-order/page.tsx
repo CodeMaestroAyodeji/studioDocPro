@@ -2,56 +2,64 @@
 
 import { DocumentList } from '@/components/document-list';
 import { Header } from '@/components/header';
-import { PurchaseOrder } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { withAuthorization } from '@/components/with-authorization';
 import { PERMISSIONS } from '@/lib/roles';
+import type { PurchaseOrder, Vendor } from '@prisma/client';
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 
-type StoredPurchaseOrder = Omit<PurchaseOrder, 'date'> & { date: string };
-
-const getPOs = (): PurchaseOrder[] => {
-  if (typeof window === 'undefined') return [];
-  const pos: PurchaseOrder[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('po_')) {
-      const item = localStorage.getItem(key);
-      if (item) {
-        const storedPo: StoredPurchaseOrder = JSON.parse(item);
-        pos.push({
-            ...storedPo,
-            date: new Date(storedPo.date),
-        });
-      }
-    }
-  }
-  return pos.sort((a, b) => b.date.getTime() - a.date.getTime());
-};
+interface PurchaseOrderWithVendor extends PurchaseOrder {
+  vendor: Vendor;
+}
 
 function PurchaseOrderListPage() {
   const router = useRouter();
+  const { firebaseUser } = useAuth();
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderWithVendor[]>([]);
+
+  const getPOs = useCallback(async () => {
+    if (!firebaseUser) return;
+
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch('/api/purchase-orders', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch purchase orders");
+      return;
+    }
+    const data = await response.json();
+    setPurchaseOrders(data);
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    getPOs();
+  }, [getPOs]);
 
   const columns = [
     { accessor: 'poNumber', header: 'PO #' },
-    { accessor: 'vendor', header: 'Vendor' },
-    { accessor: 'projectName', header: 'Project Name' },
-    { 
-        accessor: 'date', 
-        header: 'Date',
-        cell: (value: Date) => format(value.toString(), 'dd/MM/yyyy'),
+    {
+      accessor: 'vendor.name',
+      header: 'Vendor',
+      cell: (value: any, item: PurchaseOrderWithVendor) => item.vendor.name
     },
+    {
+        accessor: 'orderDate',
+        header: 'Date',
+        cell: (value: string) => format(new Date(value), 'dd/MM/yyyy'),
+    },
+    { accessor: 'total', header: 'Total' },
+    { accessor: 'status', header: 'Status' },
   ];
-  
-  const searchFields: (keyof PurchaseOrder)[] = [
-  'poNumber',
-  'vendor',
-  'projectName',
-];
 
-  
+  const searchFields = ['poNumber', 'status'];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -63,12 +71,12 @@ function PurchaseOrderListPage() {
                 New Purchase Order
             </Button>
         </div>
-        <DocumentList
+        <DocumentList<PurchaseOrderWithVendor>
             columns={columns}
-            dataFetcher={getPOs}
+            data={purchaseOrders}
             searchFields={searchFields}
-            storageKeyPrefix="po_"
             viewUrlPrefix="/purchase-order/"
+            itemIdentifier="id"
         />
       </main>
     </div>

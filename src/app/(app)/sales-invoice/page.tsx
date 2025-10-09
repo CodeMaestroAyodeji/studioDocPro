@@ -3,61 +3,78 @@
 
 import { DocumentList } from '@/components/document-list';
 import { Header } from '@/components/header';
-import { SalesInvoice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { withAuthorization } from '@/components/with-authorization';
 import { PERMISSIONS } from '@/lib/roles';
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 
-type StoredSalesInvoice = Omit<SalesInvoice, 'date' | 'dueDate'> & { date: string; dueDate: string };
-
-const getInvoices = (): SalesInvoice[] => {
-  if (typeof window === 'undefined') return [];
-  const invoices: SalesInvoice[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('invoice_')) {
-      const item = localStorage.getItem(key);
-      if (item) {
-        const storedInvoice: StoredSalesInvoice = JSON.parse(item);
-        invoices.push({
-            ...storedInvoice,
-            date: new Date(storedInvoice.date),
-            dueDate: new Date(storedInvoice.dueDate),
-        });
-      }
-    }
-  }
-  return invoices.sort((a, b) => b.date.getTime() - a.date.getTime());
-};
+// Define the type based on the API response
+interface SalesInvoice {
+  id: number;
+  invoiceNumber: string;
+  status: string;
+  issueDate: string;
+  dueDate: string;
+  total: number;
+  client: {
+    name: string;
+  };
+}
 
 function SalesInvoiceListPage() {
   const router = useRouter();
+  const { firebaseUser } = useAuth();
+  const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
+
+  const getInvoices = useCallback(async () => {
+    if (!firebaseUser) return;
+
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch('/api/sales-invoices', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      // Handle error
+      console.error("Failed to fetch invoices");
+      return [];
+    }
+    const invoices = await response.json();
+    setInvoices(invoices);
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    getInvoices();
+  }, [getInvoices]);
 
   const columns = [
     { accessor: 'invoiceNumber', header: 'Invoice #' },
-    { accessor: 'billTo', header: 'Bill To' },
     { 
-        accessor: 'date', 
+      accessor: 'client.name', 
+      header: 'Client',
+      cell: (value: any, item: SalesInvoice) => item.client.name
+    },
+    { 
+        accessor: 'issueDate', 
         header: 'Date',
-        cell: (value: Date) => format(value, 'dd/MM/yyyy'),
+        cell: (value: string) => format(new Date(value), 'dd/MM/yyyy'),
     },
     { 
         accessor: 'dueDate', 
         header: 'Due Date',
-        cell: (value: Date) => format(value, 'dd/MM/yyyy'),
+        cell: (value: string) => format(new Date(value), 'dd/MM/yyyy'),
     },
+    { accessor: 'total', header: 'Total' },
+    { accessor: 'status', header: 'Status' },
   ];
   
-  // const searchFields = ['invoiceNumber', 'billTo'];
-
-  const searchFields: (keyof SalesInvoice)[] = [
-  'invoiceNumber',
-  'billTo',
-];
-
+  const searchFields: (keyof SalesInvoice)[] = ['invoiceNumber', 'status'];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -69,13 +86,12 @@ function SalesInvoiceListPage() {
                 New Sales Invoice
             </Button>
         </div>
-        <DocumentList
+        <DocumentList<SalesInvoice>
             columns={columns}
-            dataFetcher={getInvoices}
+            data={invoices}
             searchFields={searchFields}
-            storageKeyPrefix="invoice_"
             viewUrlPrefix="/sales-invoice/"
-            itemIdentifier="invoiceNumber"
+            itemIdentifier="id"
         />
       </main>
     </div>

@@ -19,29 +19,157 @@ model User {
 }
 
 model SalesInvoice {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
+  id              Int                @id @default(autoincrement())
+  invoiceNumber   String             @unique
+  status          String             @default("Draft") // e.g., Draft, Sent, Paid, Void
+  issueDate       DateTime
+  dueDate         DateTime
+  subtotal        Float
+  tax             Float
+  total           Float
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  lineItems       InvoiceLineItem[]
+  client          Client             @relation(fields: [clientId], references: [id])
+  clientId        Int
+  paymentVouchers PaymentVoucher[]
+  paymentReceipts PaymentReceipt[]
 
   @@map("sales_invoices")
 }
 
+model InvoiceLineItem {
+  id          Int          @id @default(autoincrement())
+  description String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+  invoice     SalesInvoice @relation(fields: [invoiceId], references: [id])
+  invoiceId   Int
+
+  @@map("invoice_line_items")
+}
+
+model Client {
+  id              Int            @id @default(autoincrement())
+  name            String
+  email           String?
+  phone           String?
+  address         String?
+  invoices        SalesInvoice[]
+  paymentReceipts PaymentReceipt[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("clients")
+}
+
 model PaymentVoucher {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
+  id             Int           @id @default(autoincrement())
+  voucherNumber  String        @unique
+  paymentDate    DateTime
+  amount         Float
+  paymentMethod  String // e.g., Cash, Bank Transfer, Credit Card
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  vendor         Vendor        @relation(fields: [vendorId], references: [id])
+  vendorId       Int
+  salesInvoices  SalesInvoice[]
 
   @@map("payment_vouchers")
 }
 
+model PaymentReceipt {
+  id            Int      @id @default(autoincrement())
+  receiptNumber String   @unique
+  paymentDate   DateTime
+  amount        Float
+  paymentMethod String
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  clientId      Int
+  client        Client   @relation(fields: [clientId], references: [id])
+  salesInvoices SalesInvoice[]
+
+  @@map("payment_receipts")
+}
+
 model PurchaseOrder {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
+  id              Int                      @id @default(autoincrement())
+  poNumber        String                   @unique
+  status          String                   @default("Draft") // e.g., Draft, Sent, Approved, Fulfilled
+  orderDate       DateTime
+  deliveryDate    DateTime?
+  subtotal        Float
+  tax             Float
+  total           Float
+  notes           String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  lineItems       PurchaseOrderLineItem[]
+  vendor          Vendor                   @relation(fields: [vendorId], references: [id])
+  vendorId        Int
 
   @@map("purchase_orders")
 }
 
+model PurchaseOrderLineItem {
+  id              Int           @id @default(autoincrement())
+  description     String
+  quantity        Int
+  unitPrice       Float
+  total           Float
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId Int
+
+  @@map("purchase_order_line_items")
+}
+
 model Vendor {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
+  id              Int              @id @default(autoincrement())
+  name            String
+  email           String?
+  phone           String?
+  address         String?
+  paymentVouchers PaymentVoucher[]
+  purchaseOrders  PurchaseOrder[]
+  vendorInvoices  VendorInvoice[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@map("vendors")
+}
+
+model VendorInvoice {
+  id              Int                 @id @default(autoincrement())
+  invoiceNumber   String              @unique
+  status          String              @default("Draft") // e.g., Draft, Sent, Paid, Void
+  invoiceDate     DateTime
+  dueDate         DateTime
+  subtotal        Float
+  tax             Float
+  total           Float
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  lineItems       VendorInvoiceItem[]
+  vendor          Vendor              @relation(fields: [vendorId], references: [id])
+  vendorId        Int
+
+  @@map("vendor_invoices")
+}
+
+model VendorInvoiceItem {
+  id              Int           @id @default(autoincrement())
+  description     String
+  quantity        Int
+  unitPrice       Float
+  total           Float
+  vendorInvoice   VendorInvoice @relation(fields: [vendorInvoiceId], references: [id])
+  vendorInvoiceId Int
+
+  @@map("vendor_invoice_items")
 }

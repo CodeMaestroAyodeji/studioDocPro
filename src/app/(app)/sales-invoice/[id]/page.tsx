@@ -1,237 +1,125 @@
-
 'use client';
 
-import { useCompanyProfile } from '@/contexts/company-profile-context';
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { format } from 'date-fns';
-import { useParams, useRouter } from 'next/navigation';
-import { Pencil, Download } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
+import { useParams } from 'next/navigation';
+import { useAuth } from '@/contexts/auth-context';
 import { Header } from '@/components/header';
-import { DocumentPage } from '@/components/document-page';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import type { SalesInvoice } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
-import { numberToWords } from '@/lib/number-to-words';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
+import { SalesInvoice, InvoiceLineItem, Client } from '@prisma/client';
 
-type StoredSalesInvoice = Omit<SalesInvoice, 'date' | 'dueDate'> & { date: string, dueDate: string };
+// Define the type for the invoice with relations
+type InvoiceDetails = SalesInvoice & {
+  client: Client;
+  lineItems: InvoiceLineItem[];
+};
 
-const VAT_RATE = 7.5; // 7.5%
-
-export default function SalesInvoicePreviewPage() {
-  const { state: companyProfile } = useCompanyProfile();
-  const { toast } = useToast();
-  const router = useRouter();
+export default function SalesInvoiceDetailPage() {
   const params = useParams();
-  const invoiceId = params.id as string;
-  const [invoice, setInvoice] = useState<SalesInvoice | null>(null);
+  const { firebaseUser } = useAuth();
+  const [invoice, setInvoice] = useState<InvoiceDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const id = params.id;
 
   useEffect(() => {
-    try {
-      const storedInvoice = localStorage.getItem(`invoice_${invoiceId}`);
-      if (storedInvoice) {
-        const parsed: StoredSalesInvoice = JSON.parse(storedInvoice);
-        setInvoice({
-          ...parsed,
-          date: new Date(parsed.date),
-          dueDate: new Date(parsed.dueDate),
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Invoice not found',
-        });
-        router.push('/sales-invoice');
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error loading Invoice',
+    const fetchInvoice = async () => {
+      if (!firebaseUser || !id) return;
+
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch(`/api/sales-invoices/${id}` , {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
-      router.push('/sales-invoice');
-    }
-  }, [invoiceId, router, toast]);
 
-  const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
+      if (response.ok) {
+        const data = await response.json();
+        setInvoice(data);
+      } else {
+        console.error('Failed to fetch invoice');
+      }
+      setLoading(false);
+    };
 
-  const handlePrint = () => {
-    window.print();
-  };
+    fetchInvoice();
+  }, [firebaseUser, id]);
+
+  if (loading) {
+    return <div>Loading...</div>; // Or a skeleton loader
+  }
 
   if (!invoice) {
-    return (
-      <div className="flex flex-1 flex-col">
-        <Header title="Loading Invoice..." className="no-print" />
-        <main className="flex-1 p-4 sm:px-6 sm:py-0 text-center">
-            <p>Loading invoice details...</p>
-        </main>
-      </div>
-    );
+    return <div>Invoice not found</div>;
   }
-  
-  const paymentAccount = companyProfile.bankAccounts.find(acc => acc.id === invoice.paymentAccountId);
-  const signatory1 = companyProfile.signatories.find(s => s.id === invoice.signatory1);
-  const signatory2 = companyProfile.signatories.find(s => s.id === invoice.signatory2);
 
-  const calculateTotals = () => {
-    const subtotal = invoice.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
-    const vatAmount = invoice.applyVat ? subtotal * (VAT_RATE / 100) : 0;
-    const grandTotal = subtotal + vatAmount;
-    return { subtotal, vatAmount, grandTotal };
-  };
-
-  const { subtotal, vatAmount, grandTotal } = calculateTotals();
-  const amountInWords = numberToWords(grandTotal);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
-  };
-  
   return (
     <div className="flex flex-1 flex-col">
-      <Header title={`Invoice ${invoice.invoiceNumber}`} className="no-print" />
+      <Header title={`Invoice ${invoice.invoiceNumber}`} />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
-        <div className="mb-4 flex justify-end gap-2 no-print">
-            <Button variant="outline" onClick={() => router.push(`/sales-invoice/${invoiceId}/edit`)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-            </Button>
-            <Button onClick={handlePrint}>
-                <Download className="mr-2 h-4 w-4" />
-                Print or Save PDF
-            </Button>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => window.print()}>Print</Button>
         </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Sales Invoice</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="font-semibold">Billed To</h3>
+                <p>{invoice.client.name}</p>
+                <p>{invoice.client.address}</p>
+                <p>{invoice.client.email}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold">Invoice Details</h3>
+                <p><strong>Invoice #:</strong> {invoice.invoiceNumber}</p>
+                <p><strong>Issue Date:</strong> {format(new Date(invoice.issueDate), 'PPP')}</p>
+                <p><strong>Due Date:</strong> {format(new Date(invoice.dueDate), 'PPP')}</p>
+                <p><strong>Status:</strong> {invoice.status}</p>
+              </div>
+            </div>
 
-        <DocumentPage className="sales-invoice-print">
-             <header className="grid grid-cols-2 gap-8 mb-8">
-                <div>
-                  {logoPlaceholder && (
-                    <Image
-                      src={companyProfile.logoUrl || logoPlaceholder.imageUrl}
-                      alt="Company Logo"
-                      width={150}
-                      height={50}
-                      data-ai-hint={logoPlaceholder.imageHint}
-                      className="rounded-md object-contain mb-4"
-                    />
-                  )}
-                  <p className="font-semibold">{companyProfile.name}</p>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{companyProfile.address}</p>
-                  {companyProfile.tin && <p className="text-sm text-muted-foreground font-semibold">TIN: {companyProfile.tin}</p>}
-                </div>
-                <div className="text-right">
-                  <h1 className="text-4xl font-bold font-headline text-primary mb-2">INVOICE</h1>
-                  <div className="space-y-1 text-sm">
-                    <div className="grid grid-cols-2 gap-1">
-                      <span className="font-semibold">Invoice #</span><span>{invoice.invoiceNumber}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1">
-                      <span className="font-semibold">Invoice Date:</span>
-                      <span>{format(invoice.date, 'dd/MM/yyyy')}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1">
-                      <span className="font-semibold">Due Date:</span>
-                      <span>{format(invoice.dueDate, 'dd/MM/yyyy')}</span>
-                    </div>
-                  </div>
-                </div>
-              </header>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead className="text-right">Unit Price</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoice.lineItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.description}</TableCell>
+                    <TableCell className="text-right">{item.quantity}</TableCell>
+                    <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{item.total.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
-              <section className="mb-8">
-                  <div className="border rounded-md p-4 max-w-sm">
-                      <p className="font-semibold text-muted-foreground">BILL TO</p>
-                      <pre className="font-sans whitespace-pre-wrap text-sm">{invoice.billTo}</pre>
-                  </div>
-              </section>
-              
-               <section className="mb-8">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50%]">Description</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {invoice.items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(item.quantity * item.unitPrice)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                  <TableFooter>
-                     <TableRow>
-                         <TableCell colSpan={3} className="text-right font-semibold">Subtotal</TableCell>
-                         <TableCell className="text-right font-bold">{formatCurrency(subtotal)}</TableCell>
-                     </TableRow>
-                     {invoice.applyVat && (
-                        <TableRow>
-                            <TableCell colSpan={3} className="text-right font-semibold">VAT ({VAT_RATE}%)</TableCell>
-                            <TableCell className="text-right font-bold">{formatCurrency(vatAmount)}</TableCell>
-                        </TableRow>
-                     )}
-                     <TableRow className="text-lg">
-                         <TableCell colSpan={3} className="text-right font-bold">Total</TableCell>
-                         <TableCell className="text-right font-bold text-primary">{formatCurrency(grandTotal)}</TableCell>
-                     </TableRow>
-                  </TableFooter>
-                </Table>
-              </section>
+            <div className="flex justify-end">
+              <div className="w-1/3 text-right">
+                <p><strong>Subtotal:</strong> {invoice.subtotal.toFixed(2)}</p>
+                <p><strong>Tax (10%):</strong> {invoice.tax.toFixed(2)}</p>
+                <p className="font-bold"><strong>Total:</strong> {invoice.total.toFixed(2)}</p>
+              </div>
+            </div>
 
-             <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                <div className="space-y-4">
-                    <div className="py-2">
-                        <p className="font-semibold text-sm">Amount in words:</p>
-                        <p className="capitalize text-sm text-muted-foreground">{amountInWords}</p>
-                    </div>
-                    {invoice.notes && (
-                        <div>
-                            <h3 className="font-semibold text-sm">Notes / Terms</h3>
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{invoice.notes}</p>
-                        </div>
-                    )}
-                     {paymentAccount && (
-                        <div>
-                            <h3 className="font-semibold text-sm">Payment Details</h3>
-                            <div className="text-sm text-muted-foreground">
-                                <p>Bank: {paymentAccount.bankName}</p>
-                                <p>Account Name: {paymentAccount.accountName}</p>
-                                <p>Account Number: {paymentAccount.accountNumber}</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-             </section>
-              
-            <footer className="space-y-4">
-                 <div className="grid grid-cols-2 gap-8 pt-8">
-                    <div className="text-center">
-                        <div className="h-12"></div>
-                        <div className="border-b border-foreground w-2/3 mx-auto"></div>
-                        <p className="font-semibold mt-2">{signatory1?.name}</p>
-                        <p className="text-sm text-muted-foreground">{signatory1?.title}</p>
-                    </div>
-                    <div className="text-center">
-                        <div className="h-12"></div>
-                        <div className="border-b border-foreground w-2/3 mx-auto"></div>
-                        <p className="font-semibold mt-2">{signatory2?.name}</p>
-                        <p className="text-sm text-muted-foreground">{signatory2?.title}</p>
-                    </div>
-                 </div>
-                 <div className="text-center text-xs text-muted-foreground pt-12">
-                    <p>{companyProfile.phone} | {companyProfile.email} | {companyProfile.website}</p>
-                </div>
-            </footer>
-        </DocumentPage>
+            {invoice.notes && (
+              <div>
+                <h3 className="font-semibold">Notes</h3>
+                <p>{invoice.notes}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

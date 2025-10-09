@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
+import { useAuth } from '@/contexts/auth-context';
 
 type Column = {
   accessor: string;
@@ -23,10 +24,12 @@ type Column = {
 
 type DocumentListProps<T extends { id?: string; date?: Date }> = {
   columns: Column[];
-  dataFetcher: () => T[];
+  data?: T[];
+  dataFetcher?: () => Promise<T[]>;
   searchFields: (keyof T)[];
   storageKeyPrefix: string;
   viewUrlPrefix: string;
+  deleteUrlPrefix?: string;
   itemIdentifier?: keyof T;
   enableDateFilter?: boolean;
   isDeletableCheck?: (itemId: string) => boolean;
@@ -35,10 +38,12 @@ type DocumentListProps<T extends { id?: string; date?: Date }> = {
 
 export function DocumentList<T extends { id?: string; date?: Date, poNumber?: string, voucherNumber?: string, invoiceNumber?: string, receiptNumber?: string }>({
   columns,
+  data,
   dataFetcher,
   searchFields,
   storageKeyPrefix,
   viewUrlPrefix,
+  deleteUrlPrefix,
   itemIdentifier = "id",
   enableDateFilter = true,
   isDeletableCheck,
@@ -46,13 +51,18 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
 }: DocumentListProps<T>) {
   const router = useRouter();
   const { toast } = useToast();
+  const { firebaseUser } = useAuth();
   const [documents, setDocuments] = useState<T[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   
   useEffect(() => {
-    setDocuments(dataFetcher());
-  }, [dataFetcher]);
+    if (data) {
+      setDocuments(data);
+    } else if (typeof dataFetcher === 'function') {
+        dataFetcher().then(setDocuments);
+    }
+  }, [data, dataFetcher]);
 
   const filteredDocuments = useMemo(() => {
     let filtered = documents;
@@ -104,14 +114,41 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
     return Array.from(options.entries()).map(([key, label]) => ({ value: key, label }));
   }, [documents, enableDateFilter]);
 
-  const handleDelete = (doc: T) => {
+  const handleDelete = async (doc: T) => {
     const docId = getDocId(doc);
-    if (docId) {
-      localStorage.removeItem(`${storageKeyPrefix}${docId}`);
-      setDocuments(dataFetcher());
+    if (!docId || !deleteUrlPrefix || !firebaseUser) return;
+
+    const token = await firebaseUser.getIdToken();
+
+    try {
+      const response = await fetch(`${deleteUrlPrefix}${docId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        if (typeof dataFetcher === 'function') {
+            dataFetcher().then(setDocuments);
+        }
+        toast({
+          title: 'Document Deleted',
+          description: 'The document has been successfully deleted.',
+        });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: 'Error Deleting Document',
+          description: errorData.error || 'An unexpected error occurred.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
       toast({
-        title: 'Document Deleted',
-        description: `The document has been successfully deleted.`,
+        title: 'Error Deleting Document',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
       });
     }
   };

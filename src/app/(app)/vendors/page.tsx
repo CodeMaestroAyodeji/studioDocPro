@@ -1,16 +1,15 @@
-
 'use client';
 
 import { DocumentList } from '@/components/document-list';
 import { Header } from '@/components/header';
-import type { Vendor, VendorInvoice } from '@/lib/types';
+import type { Vendor } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
-import { getVendors } from '@/lib/vendor-utils';
 import { useState, useEffect, useCallback } from 'react';
 import { withAuthorization } from '@/components/with-authorization';
 import { PERMISSIONS } from '@/lib/roles';
+import { useAuth } from '@/contexts/auth-context';
 
 const invoiceTemplates = [
   { id: 'template-1', name: 'Classic Professional' },
@@ -22,43 +21,30 @@ const invoiceTemplates = [
 
 function VendorListPage() {
   const router = useRouter();
+  const { firebaseUser } = useAuth();
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [vendorInvoiceMap, setVendorInvoiceMap] = useState<Record<string, boolean>>({});
 
-  const isVendorTiedToInvoice = useCallback((vendorId: string) => {
-    return vendorInvoiceMap[vendorId] || false;
-  }, [vendorInvoiceMap]);
+  const getVendors = useCallback(async () => {
+    if (!firebaseUser) return;
 
-  const fetchData = useCallback(() => {
-    const fetchedVendors = getVendors();
-    setVendors(fetchedVendors);
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch('/api/vendors', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    const newVendorInvoiceMap: Record<string, boolean> = {};
-    for (const vendor of fetchedVendors) {
-        newVendorInvoiceMap[vendor.id] = false;
+    if (!response.ok) {
+      console.error("Failed to fetch vendors");
+      return;
     }
-
-    if (typeof window !== 'undefined') {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key?.startsWith('vendor_invoice_')) {
-                const item = localStorage.getItem(key);
-                if (item) {
-                    const invoice: VendorInvoice = JSON.parse(item);
-                    if (invoice.vendorId && newVendorInvoiceMap[invoice.vendorId] !== undefined) {
-                        newVendorInvoiceMap[invoice.vendorId] = true;
-                    }
-                }
-            }
-        }
-    }
-    setVendorInvoiceMap(newVendorInvoiceMap);
-    return fetchedVendors;
-  }, []);
+    const data = await response.json();
+    setVendors(data);
+  }, [firebaseUser]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    getVendors();
+  }, [getVendors]);
 
 
   const columns = [
@@ -86,14 +72,13 @@ function VendorListPage() {
         </div>
         <DocumentList
             columns={columns}
-            dataFetcher={fetchData}
+            data={vendors}
             searchFields={searchFields}
             storageKeyPrefix="vendor_"
             viewUrlPrefix="/vendors/"
+            deleteUrlPrefix="/api/vendors/"
             itemIdentifier="id"
             enableDateFilter={false}
-            isDeletableCheck={isVendorTiedToInvoice}
-            deleteDisabledMessage="This vendor cannot be deleted as they are tied to one or more invoices."
         />
       </main>
     </div>
@@ -101,4 +86,3 @@ function VendorListPage() {
 }
 
 export default withAuthorization(VendorListPage, PERMISSIONS.VENDOR_VIEW);
-

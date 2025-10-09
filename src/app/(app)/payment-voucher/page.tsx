@@ -1,4 +1,3 @@
-
 'use client';
 
 import { DocumentList } from '@/components/document-list';
@@ -10,30 +9,35 @@ import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { withAuthorization } from '@/components/with-authorization';
 import { PERMISSIONS } from '@/lib/roles';
-
-type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
-
-const getVouchers = (): PaymentVoucher[] => {
-  if (typeof window === 'undefined') return [];
-  const vouchers: PaymentVoucher[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('voucher_')) {
-      const item = localStorage.getItem(key);
-      if (item) {
-        const storedVoucher: StoredPaymentVoucher = JSON.parse(item);
-        vouchers.push({
-            ...storedVoucher,
-            date: new Date(storedVoucher.date),
-        });
-      }
-    }
-  }
-  return vouchers.sort((a, b) => b.date.getTime() - a.date.getTime());
-};
+import { useAuth } from '@/contexts/auth-context';
+import { useCallback, useEffect, useState } from 'react';
 
 function PaymentVoucherListPage() {
   const router = useRouter();
+  const { firebaseUser } = useAuth();
+  const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
+
+  const getVouchers = useCallback(async () => {
+    if (!firebaseUser) return;
+
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch('/api/payment-vouchers', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch payment vouchers");
+      return;
+    }
+    const data = await response.json();
+    setVouchers(data);
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    getVouchers();
+  }, [getVouchers]);
 
   const columns = [
     { accessor: 'voucherNumber', header: 'Voucher #' },
@@ -41,7 +45,7 @@ function PaymentVoucherListPage() {
     { 
         accessor: 'date', 
         header: 'Date',
-        cell: (value: Date) => format(value, 'dd/MM/yyyy'),
+        cell: (value: string) => format(new Date(value), 'dd/MM/yyyy'),
     },
     { 
         accessor: 'amount', 
@@ -69,10 +73,11 @@ function PaymentVoucherListPage() {
         </div>
         <DocumentList
             columns={columns}
-            dataFetcher={getVouchers}
+            data={vouchers}
             searchFields={searchFields}
             storageKeyPrefix="voucher_"
             viewUrlPrefix="/payment-voucher/"
+            deleteUrlPrefix="/api/payment-vouchers/"
         />
       </main>
     </div>
@@ -80,4 +85,3 @@ function PaymentVoucherListPage() {
 }
 
 export default withAuthorization(PaymentVoucherListPage, PERMISSIONS.PAYMENT_VOUCHER_VIEW);
-
