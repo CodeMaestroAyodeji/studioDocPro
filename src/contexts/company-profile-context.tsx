@@ -74,29 +74,24 @@ function companyProfileReducer(state: State, action: Action): State {
   }
 }
 
-const LOCAL_STORAGE_KEY = 'docupro_company_profile';
-
 export function CompanyProfileProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(companyProfileReducer, initialState);
 
   useEffect(() => {
-    try {
-      const storedState = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (storedState) {
-        dispatch({ type: 'SET_PROFILE', payload: JSON.parse(storedState) });
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('/api/company-profile');
+        if (response.ok) {
+          const profile = await response.json();
+          dispatch({ type: 'SET_PROFILE', payload: profile });
+        }
+      } catch (error) {
+        console.error('Failed to fetch company profile', error);
       }
-    } catch (error) {
-      console.error('Failed to read from localStorage', error);
-    }
-  }, []);
+    };
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-    } catch (error) {
-      console.error('Failed to write to localStorage', error);
-    }
-  }, [state]);
+    fetchProfile();
+  }, []);
 
   return (
     <CompanyProfileContext.Provider value={{ state, dispatch }}>

@@ -173,3 +173,41 @@ model VendorInvoiceItem {
 
   @@map("vendor_invoice_items")
 }
+
+model CompanyProfile {
+  id           Int           @id @default(autoincrement())
+  name         String
+  address      String
+  tin          String?
+  email        String
+  phone        String
+  website      String?
+  logoUrl      String
+  signatories  Signatory[]
+  bankAccounts BankAccount[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("company_profiles")
+}
+
+model Signatory {
+  id               Int            @id @default(autoincrement())
+  name             String
+  title            String
+  companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id])
+  companyProfileId Int
+
+  @@map("signatories")
+}
+
+model BankAccount {
+  id               Int            @id @default(autoincrement())
+  bankName         String
+  accountName      String
+  accountNumber    String
+  companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id])
+  companyProfileId Int
+
+  @@map("bank_accounts")
+}

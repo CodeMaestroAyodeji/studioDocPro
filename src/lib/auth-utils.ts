@@ -3,8 +3,9 @@
 import { headers } from 'next/headers';
 import admin from '@/lib/firebase-admin';
 import prisma from '@/lib/prisma';
+import { User } from '@prisma/client';
 
-export async function getCurrentUserRole(): Promise<string | null> {
+export async function getCurrentUser(): Promise<User | null> {
   const headerList = await headers();
   const authHeader = headerList.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
@@ -13,16 +14,16 @@ export async function getCurrentUserRole(): Promise<string | null> {
   if (!idToken) return null;
 
   try {
-    // First, try to get role from custom claims for efficiency
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    if (decodedToken.role) {
-      return decodedToken.role;
-    }
-    // If not in claims, fall back to DB
     const user = await prisma.user.findUnique({ where: { id: decodedToken.uid } });
-    return user?.role || null;
+    return user;
   } catch (error) {
-    console.error('Error getting user role:', error);
+    console.error('Error getting user:', error);
     return null;
   }
+}
+
+export async function getCurrentUserRole(): Promise<string | null> {
+  const user = await getCurrentUser();
+  return user?.role || null;
 }

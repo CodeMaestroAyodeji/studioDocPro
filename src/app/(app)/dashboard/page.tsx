@@ -12,7 +12,7 @@ import {
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { ROLES, PERMISSIONS, ROLE_PERMISSIONS } from "@/lib/roles";
-import { getCurrentUserRole } from "@/lib/auth-utils";
+import { getCurrentUser } from "@/lib/auth-utils";
 
 // Quick links with permissions
 const allLinks = [
@@ -55,14 +55,15 @@ const allLinks = [
 ];
 
 export default async function DashboardPage() {
+  const user = await getCurrentUser();
   const userRole =
-    ((await getCurrentUserRole()) as keyof typeof ROLES) || "USER";
+    user?.role || "USER";
 
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(today.getDate() - 30);
 
-  const rolePermissions = ROLE_PERMISSIONS[userRole] || [];
+  const rolePermissions = ROLE_PERMISSIONS[userRole as keyof typeof ROLE_PERMISSIONS] || [];
 
   // Helper to check if role can view a module
   const canView = (permission: string) => rolePermissions.includes(permission);
@@ -109,7 +110,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col">
       <Header
-        title={`Welcome!`}
+        title={`Welcome, ${user?.name || 'User'}!`}
         description={`You are logged in as ${userRole}.`}
       />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-8">

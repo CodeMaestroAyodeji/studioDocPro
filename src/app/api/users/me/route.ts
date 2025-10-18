@@ -65,7 +65,7 @@ export async function GET(request: Request) {
           email: email,
           name: firebaseUser.displayName ?? 'Unnamed User',
           photoURL: firebaseUser.photoURL ?? null,
-          role: 'User', // default role
+          role: 'user', // default role
           lastSignInTime: new Date(),
         },
       });
@@ -103,10 +103,18 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { name, email, photoURL } = body;
 
-    const updatedUser = await db.user.update({
-      where: { id: uid },
-      data: { name, email, photoURL },
-    });
+    // Update in parallel
+    const [updatedUser, _] = await Promise.all([
+      db.user.update({
+        where: { id: uid },
+        data: { name, email, photoURL },
+      }),
+      admin.auth().updateUser(uid, {
+        displayName: name,
+        email: email,
+        photoURL: photoURL,
+      })
+    ]);
 
     return NextResponse.json(updatedUser, { status: 200 });
   } catch (error) {

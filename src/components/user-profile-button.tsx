@@ -1,4 +1,3 @@
-
 'use client';
 
 import { LogOut, User as UserIcon } from 'lucide-react';
@@ -48,7 +47,7 @@ export function UserProfileButton() {
     return null;
   }
   
-  const userInitials = user.displayName
+  const userInitials = user.name
     ?.split(' ')
     .map((n) => n[0])
     .join('') || <UserIcon className="h-5 w-5" />;
@@ -59,11 +58,11 @@ export function UserProfileButton() {
       <DropdownMenuTrigger asChild>
         <button className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2">
             <Avatar className="h-8 w-8">
-              {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || 'User'} />}
+              {user.photoURL && <AvatarImage src={user.photoURL} alt={user.name || 'User'} />}
               <AvatarFallback>{userInitials}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col space-y-1 overflow-hidden group-data-[collapsible=icon]:hidden">
-                <p className="truncate font-medium">{user.displayName}</p>
+                <p className="truncate font-medium">{user.name}</p>
                 <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             </div>
         </button>

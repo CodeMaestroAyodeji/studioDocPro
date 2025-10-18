@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -76,13 +75,34 @@ export default function ProfilePage() {
     });
   }, [state, form]);
 
-  const onSubmit = (values: z.infer<typeof profileSchema>) => {
-    dispatch({ type: 'SET_PROFILE', payload: values });
-    toast({
-      title: 'Profile Updated',
-      description: 'Your company profile has been saved successfully.',
-    });
-    router.push('/profile/view');
+  const onSubmit = async (values: z.infer<typeof profileSchema>) => {
+    try {
+      const response = await fetch('/api/company-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save profile');
+      }
+
+      dispatch({ type: 'SET_PROFILE', payload: values });
+
+      toast({
+        title: 'Profile Updated',
+        description: 'Your company profile has been saved successfully.',
+      });
+      router.push('/profile/view');
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to save profile. Please try again.',
+      });
+    }
   };
 
   const handleLogoUploadClick = () => {
