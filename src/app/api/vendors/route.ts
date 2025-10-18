@@ -9,12 +9,12 @@ const prisma = new PrismaClient();
 export const dynamic = 'force-dynamic';
 
 const vendorSchema = z.object({
-  companyName: z.string().min(1, 'Company Name is required'),
-  contactName: z.string().min(1, 'Contact Name is required'),
-  address: z.string().min(1, 'Address is required'),
-  phone: z.string().min(1, 'Phone is required'),
+  name: z.string().min(1, 'Company Name is required'),
+  contactName: z.string().optional(),
+  address: z.string().optional(),
+  phone: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-}).strip();
+});
 
 export async function POST(request: Request) {
   const headersList = await headers();
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
     const vendor = await prisma.vendor.create({
       data: {
-        name: vendorData.companyName,
+        name: vendorData.name,
         contactName: vendorData.contactName,
         email: vendorData.email,
         phone: vendorData.phone,

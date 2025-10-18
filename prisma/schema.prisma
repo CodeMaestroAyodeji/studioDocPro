@@ -135,13 +135,28 @@ model Vendor {
   email           String?
   phone           String?
   address         String?
+  website         String?
+  tin             String?
+  logoUrl         String?
   paymentVouchers PaymentVoucher[]
   purchaseOrders  PurchaseOrder[]
   vendorInvoices  VendorInvoice[]
+  bankAccounts    VendorBankAccount[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
   @@map("vendors")
+}
+
+model VendorBankAccount {
+  id            Int      @id @default(autoincrement())
+  bankName      String
+  accountName   String
+  accountNumber String
+  vendor        Vendor   @relation(fields: [vendorId], references: [id])
+  vendorId      Int
+
+  @@map("vendor_bank_accounts")
 }
 
 model VendorInvoice {
