@@ -131,6 +131,7 @@ model PurchaseOrderLineItem {
 model Vendor {
   id              Int              @id @default(autoincrement())
   name            String
+  contactName     String?
   email           String?
   phone           String?
   address         String?

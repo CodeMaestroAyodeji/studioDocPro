@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateAvatar } from '@/lib/vendor-utils';
+import { useAuth } from '@/contexts/auth-context';
 
 const vendorSchema = z.object({
   id: z.string(),
@@ -46,6 +47,7 @@ export default function NewVendorPage() {
   const { toast } = useToast();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { firebaseUser } = useAuth();
   
   const form = useForm<z.infer<typeof vendorSchema>>({
     resolver: zodResolver(vendorSchema),
@@ -66,20 +68,42 @@ export default function NewVendorPage() {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof vendorSchema>) => {
+  const onSubmit = async (values: z.infer<typeof vendorSchema>) => {
+    if (!firebaseUser) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'You must be logged in to create a vendor.',
+      });
+      return;
+    }
+
     try {
-        localStorage.setItem(`vendor_${values.id}`, JSON.stringify(values));
-        toast({
-            title: 'Vendor Created',
-            description: `${values.companyName} has been added to your vendors.`,
-        });
-        router.push('/vendors');
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch('/api/vendors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create vendor');
+      }
+
+      toast({
+        title: 'Vendor Created',
+        description: `${values.companyName} has been added to your vendors.`,
+      });
+      router.push('/vendors');
     } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: 'Error saving vendor',
-            description: 'Could not save the vendor to local storage.',
-        });
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to create vendor. Please try again.',
+      });
     }
   };
 

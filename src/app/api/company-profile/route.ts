@@ -83,7 +83,19 @@ export async function GET() {
       return new NextResponse('Not Found', { status: 404 });
     }
 
-    return NextResponse.json(companyProfile, { status: 200 });
+    const profileWithSringIds = {
+      ...companyProfile,
+      signatories: companyProfile.signatories.map((s) => ({
+        ...s,
+        id: String(s.id),
+      })),
+      bankAccounts: companyProfile.bankAccounts.map((b) => ({
+        ...b,
+        id: String(b.id),
+      })),
+    };
+
+    return NextResponse.json(profileWithSringIds, { status: 200 });
   } catch (error: any) {
     console.error('[API_COMPANY_PROFILE_GET]', error);
     return new NextResponse('Internal Server Error', { status: 500 });
