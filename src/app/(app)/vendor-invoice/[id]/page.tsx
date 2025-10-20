@@ -1,17 +1,16 @@
-
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Pencil, Download } from 'lucide-react';
+import { Pencil, Download, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/header';
 import { DocumentPage } from '@/components/document-page';
 import type { VendorInvoice, Vendor } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { getVendors } from '@/lib/vendor-utils';
+import { useAuth } from '@/contexts/auth-context';
 
 import { InvoiceTemplate1 } from '@/components/vendor-invoice-templates/template-1';
 import { InvoiceTemplate2 } from '@/components/vendor-invoice-templates/template-2';
@@ -19,7 +18,9 @@ import { InvoiceTemplate3 } from '@/components/vendor-invoice-templates/template
 import { InvoiceTemplate4 } from '@/components/vendor-invoice-templates/template-4';
 import { InvoiceTemplate5 } from '@/components/vendor-invoice-templates/template-5';
 
-type StoredVendorInvoice = Omit<VendorInvoice, 'invoiceDate' | 'dueDate'> & { invoiceDate: string; dueDate: string };
+interface VendorInvoiceWithRelations extends VendorInvoice {
+  vendor: Vendor;
+}
 
 const TAX_RATE = 7.5; // 7.5% VAT
 
@@ -29,40 +30,34 @@ export default function VendorInvoicePreviewPage() {
   const router = useRouter();
   const params = useParams();
   const invoiceId = params.id as string;
-  const [invoice, setInvoice] = useState<VendorInvoice | null>(null);
-  const [vendor, setVendor] = useState<Vendor | null>(null);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const { firebaseUser } = useAuth();
+  const [invoice, setInvoice] = useState<VendorInvoiceWithRelations | null>(null);
 
   useEffect(() => {
-    setVendors(getVendors());
-  }, []);
+    if (!firebaseUser || !invoiceId) return;
 
-  useEffect(() => {
-    try {
-      const storedInvoice = localStorage.getItem(`vendor_invoice_${invoiceId}`);
-      if (storedInvoice) {
-        const parsed: StoredVendorInvoice = JSON.parse(storedInvoice);
-        const invoiceData: VendorInvoice = {
-          ...parsed,
-          invoiceDate: new Date(parsed.invoiceDate),
-          dueDate: new Date(parsed.dueDate),
-        };
-        setInvoice(invoiceData);
-        const associatedVendor = vendors.find(v => v.id === invoiceData.vendorId);
-        if (associatedVendor) {
-            setVendor(associatedVendor);
-        } else if (vendors.length > 0) {
-            toast({ variant: 'destructive', title: 'Associated vendor not found' });
+    const fetchInvoice = async () => {
+      const token = await firebaseUser.getIdToken();
+      try {
+        const response = await fetch(`/api/vendor-invoices/${invoiceId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: 'no-store',
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch invoice');
         }
-      } else {
-        toast({ variant: 'destructive', title: 'Invoice not found' });
+        const data = await response.json();
+        setInvoice(data);
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error loading invoice' });
         router.push('/vendor-invoice');
       }
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error loading invoice' });
-      router.push('/vendor-invoice');
-    }
-  }, [invoiceId, router, toast, vendors]);
+    };
+
+    fetchInvoice();
+  }, [invoiceId, router, toast, firebaseUser]);
 
   const { subtotal, totalDiscount, totalTax, grandTotal } = useMemo(() => {
     if (!invoice) return { subtotal: 0, totalDiscount: 0, totalTax: 0, grandTotal: 0 };
@@ -71,8 +66,8 @@ export default function VendorInvoicePreviewPage() {
     let totalDiscount = 0;
     let totalTax = 0;
 
-    invoice.items.forEach(item => {
-      const amount = item.quantity * item.rate;
+    invoice.lineItems.forEach(item => {
+      const amount = item.quantity * item.unitPrice;
       const discount = item.discount || 0;
       subtotal += amount;
       totalDiscount += discount;
@@ -85,11 +80,46 @@ export default function VendorInvoicePreviewPage() {
     return { subtotal, totalDiscount, totalTax, grandTotal };
   }, [invoice]);
 
+  const handleDelete = async () => {
+    if (!firebaseUser || !invoiceId) return;
+
+    if (!confirm('Are you sure you want to delete this invoice?')) {
+        return;
+    }
+
+    const token = await firebaseUser.getIdToken();
+
+    try {
+        const response = await fetch(`/api/vendor-invoices/${invoiceId}`, {
+            method: 'DELETE',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete invoice');
+        }
+
+        toast({
+            title: 'Invoice Deleted',
+            description: `Invoice "${invoice?.invoiceNumber}" has been deleted.`,
+        });
+        router.push('/vendor-invoice');
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error Deleting Invoice',
+            description: 'Could not delete the invoice. Please try again.',
+        });
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
 
-  if (!invoice || !vendor) {
+  if (!invoice) {
     return (
       <div className="flex flex-1 flex-col">
         <Header title="Loading Invoice..." className="no-print" />
@@ -100,7 +130,7 @@ export default function VendorInvoicePreviewPage() {
 
   const renderTemplatePreview = () => {
     const templateProps = {
-      vendor,
+      vendor: invoice.vendor,
       invoice,
       companyProfile,
       subtotal,
@@ -109,7 +139,7 @@ export default function VendorInvoicePreviewPage() {
       grandTotal,
     };
     
-    switch (vendor.invoiceTemplate) {
+    switch (invoice.vendor.invoiceTemplate) {
       case 'template-1': return <InvoiceTemplate1 {...templateProps} />;
       case 'template-2': return <InvoiceTemplate2 {...templateProps} />;
       case 'template-3': return <InvoiceTemplate3 {...templateProps} />;
@@ -127,6 +157,7 @@ export default function VendorInvoicePreviewPage() {
           <Button variant="outline" onClick={() => router.push(`/vendor-invoice/${invoiceId}/edit`)}>
             <Pencil className="mr-2 h-4 w-4" /> Edit
           </Button>
+          <Button variant="destructive" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>
           <Button onClick={handlePrint}>
             <Download className="mr-2 h-4 w-4" /> Print or Save PDF
           </Button>

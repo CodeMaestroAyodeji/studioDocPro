@@ -1,22 +1,5 @@
-
-import type { Vendor } from './types';
-
-export function getVendors(): Vendor[] {
-  if (typeof window === 'undefined') return [];
-  const vendors: Vendor[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('vendor_') && !key.startsWith('vendor_invoice_')) {
-      const item = localStorage.getItem(key);
-      if (item) {
-        vendors.push(JSON.parse(item));
-      }
-    }
-  }
-  return vendors.sort((a, b) => a.companyName.localeCompare(b.companyName));
-};
-
 export function generateAvatar(name: string) {
+    if (!name) return '';
     const initials = name
         .split(' ')
         .map(n => n[0])

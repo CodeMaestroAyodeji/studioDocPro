@@ -163,6 +163,7 @@ model VendorBankAccount {
 model VendorInvoice {
   id              Int                 @id @default(autoincrement())
   invoiceNumber   String              @unique
+  projectName     String
   status          String              @default("Draft") // e.g., Draft, Sent, Paid, Void
   invoiceDate     DateTime
   dueDate         DateTime
@@ -184,6 +185,8 @@ model VendorInvoiceItem {
   description     String
   quantity        Int
   unitPrice       Float
+  discount        Float?
+  tax             Boolean?
   total           Float
   vendorInvoice   VendorInvoice @relation(fields: [vendorInvoiceId], references: [id])
   vendorInvoiceId Int

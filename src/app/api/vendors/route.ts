@@ -100,14 +100,7 @@ export async function GET() {
       },
     });
 
-    const formattedVendors = vendors.map(vendor => ({
-      ...vendor,
-      id: String(vendor.id),
-      companyName: vendor.name,
-      contactName: vendor.contactName || 'N/A',
-    }));
-
-    return NextResponse.json(formattedVendors);
+    return NextResponse.json(vendors);
   } catch (error) {
     console.error('Error fetching vendors:', error);
     return NextResponse.json({ error: 'Failed to fetch vendors' }, { status: 500 });

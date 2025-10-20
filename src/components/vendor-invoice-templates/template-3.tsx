@@ -1,4 +1,3 @@
-
 import type { Vendor, VendorInvoice, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import Image from 'next/image';
@@ -14,6 +13,7 @@ const formatCurrency = (amount: number) => {
 
 export function InvoiceTemplate3({ vendor, invoice, companyProfile, subtotal, totalDiscount, totalTax, grandTotal, isEditing = false, form }: TemplateProps) {
   const amountInWords = numberToWords(grandTotal);
+  const bankAccount = vendor.bankAccounts && vendor.bankAccounts[0];
 
   return (
     <div className="text-sm relative">
@@ -21,13 +21,13 @@ export function InvoiceTemplate3({ vendor, invoice, companyProfile, subtotal, to
         <header className="flex justify-between items-center mb-16">
             <div>
                  <Image
-                    src={vendor.logoUrl || generateAvatar(vendor.companyName)}
-                    alt={`${vendor.companyName} logo`}
+                    src={vendor.logoUrl || generateAvatar(vendor.name)}
+                    alt={`${vendor.name} logo`}
                     width={80}
                     height={80}
                     className="rounded-full object-cover mb-4"
                 />
-                <h1 className="font-bold text-2xl">{vendor.companyName}</h1>
+                <h1 className="font-bold text-2xl">{vendor.name}</h1>
                 <p className="text-muted-foreground whitespace-pre-wrap">{vendor.address}</p>
             </div>
             <div className="text-right">
@@ -43,8 +43,8 @@ export function InvoiceTemplate3({ vendor, invoice, companyProfile, subtotal, to
                 <p>{companyProfile.address}</p>
             </div>
             <div className="text-right pr-8">
-                 <p className="text-muted-foreground">Invoice Date: {format(invoice.invoiceDate, 'dd MMM yyyy')}</p>
-                 <p className="text-muted-foreground">Due Date: {format(invoice.dueDate, 'dd MMM yyyy')}</p>
+                 <p className="text-muted-foreground">Invoice Date: {format(new Date(invoice.invoiceDate), 'dd MMM yyyy')}</p>
+                 <p className="text-muted-foreground">Due Date: {format(new Date(invoice.dueDate), 'dd MMM yyyy')}</p>
                  <p className="text-muted-foreground mt-2">Project: {invoice.projectName}</p>
             </div>
         </section>
@@ -61,12 +61,12 @@ export function InvoiceTemplate3({ vendor, invoice, companyProfile, subtotal, to
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {invoice.items.map(item => (
+                        {invoice.lineItems.map(item => (
                         <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.description}</TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.rate)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.quantity * item.rate)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.quantity * item.unitPrice)}</TableCell>
                         </TableRow>
                         ))}
                     </TableBody>
@@ -88,9 +88,13 @@ export function InvoiceTemplate3({ vendor, invoice, companyProfile, subtotal, to
 
         <footer className="border-t pt-4 text-xs text-center pr-8">
             <p className="font-semibold">PAYMENT DETAILS</p>
-            <p className="text-muted-foreground">
-                {vendor.bankName} &middot; {vendor.accountName} &middot; {vendor.accountNumber}
-            </p>
+            {bankAccount ? (
+                <p className="text-muted-foreground">
+                    {bankAccount.bankName} &middot; {bankAccount.accountName} &middot; {bankAccount.accountNumber}
+                </p>
+            ) : (
+                <p className="text-muted-foreground">No bank details provided.</p>
+            )}
              {invoice.notes && (
                 <p className="mt-4 text-muted-foreground">Note: {invoice.notes}</p>
             )}

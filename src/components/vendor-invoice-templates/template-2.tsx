@@ -1,4 +1,3 @@
-
 import type { Vendor, VendorInvoice, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import Image from 'next/image';
@@ -14,12 +13,13 @@ const formatCurrency = (amount: number) => {
 
 export function InvoiceTemplate2({ vendor, invoice, companyProfile, subtotal, totalDiscount, totalTax, grandTotal, isEditing = false, form }: TemplateProps) {
   const amountInWords = numberToWords(grandTotal);
+  const bankAccount = vendor.bankAccounts && vendor.bankAccounts[0];
 
   return (
     <div className="text-sm bg-gray-50 p-8 rounded-lg">
         <header className="flex justify-between items-start mb-12">
             <div>
-                <h1 className="text-3xl font-bold text-primary mb-2">{vendor.companyName}</h1>
+                <h1 className="text-3xl font-bold text-primary mb-2">{vendor.name}</h1>
                 <p className="text-muted-foreground whitespace-pre-wrap max-w-xs">{vendor.address}</p>
             </div>
             <h2 className="text-4xl font-extrabold text-gray-300 tracking-wider">INVOICE</h2>
@@ -39,9 +39,9 @@ export function InvoiceTemplate2({ vendor, invoice, companyProfile, subtotal, to
             </div>
              <div>
                 <p className="text-gray-500 font-semibold mb-2">DATE</p>
-                <p className="font-bold">{format(invoice.invoiceDate, 'dd/MM/yyyy')}</p>
+                <p className="font-bold">{format(new Date(invoice.invoiceDate), 'dd/MM/yyyy')}</p>
                  <p className="text-gray-500 font-semibold mt-4 mb-2">DUE DATE</p>
-                <p className="font-bold">{format(invoice.dueDate, 'dd/MM/yyyy')}</p>
+                <p className="font-bold">{format(new Date(invoice.dueDate), 'dd/MM/yyyy')}</p>
             </div>
         </section>
 
@@ -57,12 +57,12 @@ export function InvoiceTemplate2({ vendor, invoice, companyProfile, subtotal, to
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {invoice.items.map(item => (
+                        {invoice.lineItems.map(item => (
                         <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.description}</TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.rate)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.quantity * item.rate)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.quantity * item.unitPrice)}</TableCell>
                         </TableRow>
                         ))}
                     </TableBody>
@@ -86,7 +86,11 @@ export function InvoiceTemplate2({ vendor, invoice, companyProfile, subtotal, to
             </div>
              <div>
                 <p className="font-bold text-foreground mb-1">Payment Details</p>
-                <p>Bank: {vendor.bankName} | Account: {vendor.accountNumber} ({vendor.accountName})</p>
+                {bankAccount ? (
+                    <p>Bank: {bankAccount.bankName} | Account: {bankAccount.accountNumber} ({bankAccount.accountName})</p>
+                ) : (
+                    <p>No bank details provided.</p>
+                )}
             </div>
              {invoice.notes && (
                 <div>

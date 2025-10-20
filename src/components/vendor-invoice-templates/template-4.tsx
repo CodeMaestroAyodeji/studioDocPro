@@ -1,4 +1,3 @@
-
 import type { Vendor, VendorInvoice, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import Image from 'next/image';
@@ -14,6 +13,7 @@ const formatCurrency = (amount: number) => {
 
 export function InvoiceTemplate4({ vendor, invoice, companyProfile, subtotal, totalDiscount, totalTax, grandTotal, isEditing = false, form }: TemplateProps) {
   const amountInWords = numberToWords(grandTotal);
+  const bankAccount = vendor.bankAccounts && vendor.bankAccounts[0];
 
   return (
     <div className="text-sm">
@@ -21,13 +21,13 @@ export function InvoiceTemplate4({ vendor, invoice, companyProfile, subtotal, to
             <h2 className="text-3xl font-bold text-primary tracking-widest">INVOICE</h2>
             <div className="mt-4">
                 <Image
-                    src={vendor.logoUrl || generateAvatar(vendor.companyName)}
-                    alt={`${vendor.companyName} logo`}
+                    src={vendor.logoUrl || generateAvatar(vendor.name)}
+                    alt={`${vendor.name} logo`}
                     width={80}
                     height={80}
                     className="rounded-md object-contain mb-2 mx-auto"
                 />
-                <h1 className="font-bold text-lg">{vendor.companyName}</h1>
+                <h1 className="font-bold text-lg">{vendor.name}</h1>
                 <p className="text-xs text-muted-foreground whitespace-pre-wrap">{vendor.address}</p>
             </div>
         </header>
@@ -48,7 +48,7 @@ export function InvoiceTemplate4({ vendor, invoice, companyProfile, subtotal, to
                 </div>
                 <div>
                     <p className="font-semibold text-muted-foreground">DATE</p>
-                    <p>{format(invoice.invoiceDate, 'dd/MM/yyyy')}</p>
+                    <p>{format(new Date(invoice.invoiceDate), 'dd/MM/yyyy')}</p>
                 </div>
             </div>
         </section>
@@ -65,12 +65,12 @@ export function InvoiceTemplate4({ vendor, invoice, companyProfile, subtotal, to
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {invoice.items.map(item => (
+                        {invoice.lineItems.map(item => (
                         <TableRow key={item.id}>
                             <TableCell>{item.description}</TableCell>
                             <TableCell className="text-center">{item.quantity}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.rate)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.quantity * item.rate)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.quantity * item.unitPrice)}</TableCell>
                         </TableRow>
                         ))}
                     </TableBody>
@@ -99,7 +99,11 @@ export function InvoiceTemplate4({ vendor, invoice, companyProfile, subtotal, to
             </div>
             <div>
                 <p className="font-semibold text-foreground">Bank Details:</p>
-                <p>Bank: {vendor.bankName}, Acct Name: {vendor.accountName}, Acct No: {vendor.accountNumber}</p>
+                {bankAccount ? (
+                    <p>Bank: {bankAccount.bankName}, Acct Name: {bankAccount.accountName}, Acct No: {bankAccount.accountNumber}</p>
+                ) : (
+                    <p>No bank details provided.</p>
+                )}
             </div>
              {invoice.notes && <p>Note: {invoice.notes}</p>}
         </footer>

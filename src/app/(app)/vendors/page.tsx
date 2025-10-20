@@ -48,7 +48,7 @@ function VendorListPage() {
 
 
   const columns = [
-    { accessor: 'companyName', header: 'Company Name' },
+    { accessor: 'name', header: 'Company Name' },
     { accessor: 'contactName', header: 'Contact Name' },
     { accessor: 'phone', header: 'Phone' },
     { accessor: 'website', header: 'Website' },
@@ -60,7 +60,7 @@ function VendorListPage() {
     },
   ];
   
-  const searchFields: (keyof Vendor)[] = ['companyName', 'contactName', 'email', 'phone'];
+  const searchFields: (keyof Vendor)[] = ['name', 'contactName', 'email', 'phone'];
 
   return (
     <div className="flex flex-1 flex-col">

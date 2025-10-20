@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -19,11 +18,11 @@ import { DocumentPage } from '@/components/document-page';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import type { VendorInvoice, Vendor } from '@/lib/types';
 import { getNextVendorInvoiceNumber } from '@/lib/vendor-invoice-sequence';
-import { getVendors } from '@/lib/vendor-utils';
 import { Combobox } from '@/components/ui/combobox';
 import { InvoiceTemplate1 } from '@/components/vendor-invoice-templates/template-1';
 import { InvoiceTemplate2 } from '@/components/vendor-invoice-templates/template-2';
@@ -36,23 +35,20 @@ const invoiceItemSchema = z.object({
   id: z.string(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(0.01, 'Must be > 0'),
-  rate: z.coerce.number().min(0, 'Cannot be negative'),
+  unitPrice: z.coerce.number().min(0, 'Cannot be negative'),
   discount: z.coerce.number().min(0).optional(),
   tax: z.boolean(),
 });
 
 const invoiceSchema = z.object({
-  id: z.string(),
   vendorId: z.string().min(1, 'Please select a vendor'),
   projectName: z.string().min(1, 'Project name is required'),
   invoiceNumber: z.string(),
   invoiceDate: z.date(),
   dueDate: z.date(),
-  items: z.array(invoiceItemSchema).min(1, 'At least one item is required'),
+  lineItems: z.array(invoiceItemSchema).min(1, 'At least one item is required'),
   notes: z.string().optional(),
 });
-
-type StoredVendorInvoice = Omit<VendorInvoice, 'invoiceDate' | 'dueDate'> & { invoiceDate: string, dueDate: string };
 
 const TAX_RATE = 7.5; // 7.5% VAT
 
@@ -60,38 +56,49 @@ export default function NewVendorInvoicePage() {
   const { state: companyProfile } = useCompanyProfile();
   const router = useRouter();
   const { toast } = useToast();
+  const { firebaseUser } = useAuth();
   
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [invoiceNumber, setInvoiceNumber] = useState('');
 
   useEffect(() => {
-    setVendors(getVendors());
-  }, []);
+    if (!firebaseUser) return;
+    const fetchVendors = async () => {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch('/api/vendors', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      setVendors(data);
+    };
+    fetchVendors();
+  }, [firebaseUser]);
 
   const vendorOptions = useMemo(() => 
-    vendors.map(v => ({ label: v.companyName, value: v.id })),
+    vendors.map(v => ({ label: v.name, value: v.id.toString() })),
   [vendors]);
 
   const form = useForm<z.infer<typeof invoiceSchema>>({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
-      id: crypto.randomUUID(),
       vendorId: '',
       projectName: '',
       invoiceNumber: '',
       invoiceDate: new Date(),
       dueDate: addDays(new Date(), 14),
-      items: [{ id: crypto.randomUUID(), description: '', quantity: 1, rate: 0, discount: 0, tax: true }],
+      lineItems: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, discount: 0, tax: true }],
       notes: '',
     },
   });
 
   const selectedVendorId = useWatch({ control: form.control, name: 'vendorId' });
-  const selectedVendor = useMemo(() => vendors.find(v => v.id === selectedVendorId), [vendors, selectedVendorId]);
+  const selectedVendor = useMemo(() => vendors.find(v => v.id.toString() === selectedVendorId), [vendors, selectedVendorId]);
 
   useEffect(() => {
     if (selectedVendor) {
-      const nextInvoiceNumber = getNextVendorInvoiceNumber(selectedVendor.companyName, true);
+      const nextInvoiceNumber = getNextVendorInvoiceNumber(selectedVendor.name, true);
       setInvoiceNumber(nextInvoiceNumber);
       form.setValue('invoiceNumber', nextInvoiceNumber);
     } else {
@@ -102,10 +109,10 @@ export default function NewVendorInvoicePage() {
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: 'items',
+    name: 'lineItems',
   });
   
-  const watchedItems = useWatch({ control: form.control, name: 'items' });
+  const watchedItems = useWatch({ control: form.control, name: 'lineItems' });
 
   const { subtotal, totalDiscount, totalTax, grandTotal } = useMemo(() => {
     let subtotal = 0;
@@ -113,7 +120,7 @@ export default function NewVendorInvoicePage() {
     let totalTax = 0;
 
     (watchedItems || []).forEach(item => {
-      const amount = (item.quantity || 0) * (item.rate || 0);
+      const amount = (item.quantity || 0) * (item.unitPrice || 0);
       const discount = item.discount || 0;
       subtotal += amount;
       totalDiscount += discount;
@@ -126,21 +133,32 @@ export default function NewVendorInvoicePage() {
     return { subtotal, totalDiscount, totalTax, grandTotal };
   }, [watchedItems]);
 
-  const handleSubmit = (values: z.infer<typeof invoiceSchema>) => {
+  const handleSubmit = async (values: z.infer<typeof invoiceSchema>) => {
+    if (!firebaseUser) return;
+    const token = await firebaseUser.getIdToken();
     try {
-      const invoiceWithDateAsString: StoredVendorInvoice = {
-        ...values,
-        invoiceDate: values.invoiceDate.toISOString(),
-        dueDate: values.dueDate.toISOString(),
-      };
-      localStorage.setItem(`vendor_invoice_${values.id}`, JSON.stringify(invoiceWithDateAsString));
-      toast({
-        title: 'Invoice Saved',
-        description: `Invoice ${values.invoiceNumber} has been saved.`,
+      const response = await fetch('/api/vendor-invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(values),
       });
-      router.push(`/vendor-invoice/${values.id}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to create invoice');
+      }
+
+      const newInvoice = await response.json();
+
+      toast({
+        title: 'Invoice Created',
+        description: `Invoice ${newInvoice.invoiceNumber} has been created.`,
+      });
+      router.push(`/vendor-invoice/${newInvoice.id}`);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error Saving Invoice' });
+      toast({ variant: 'destructive', title: 'Error Creating Invoice' });
     }
   };
 

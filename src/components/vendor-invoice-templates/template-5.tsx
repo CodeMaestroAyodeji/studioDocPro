@@ -1,4 +1,3 @@
-
 import type { Vendor, VendorInvoice, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import Image from 'next/image';
@@ -15,6 +14,7 @@ const formatCurrency = (amount: number) => {
 
 export function InvoiceTemplate5({ vendor, invoice, companyProfile, subtotal, totalDiscount, totalTax, grandTotal, isEditing = false, form }: TemplateProps) {
   const amountInWords = numberToWords(grandTotal);
+  const bankAccount = vendor.bankAccounts && vendor.bankAccounts[0];
 
   return (
     <div className="text-sm border-t-8 border-primary">
@@ -26,13 +26,13 @@ export function InvoiceTemplate5({ vendor, invoice, companyProfile, subtotal, to
             </div>
             <div className="text-right">
                 <Image
-                    src={vendor.logoUrl || generateAvatar(vendor.companyName)}
-                    alt={`${vendor.companyName} logo`}
+                    src={vendor.logoUrl || generateAvatar(vendor.name)}
+                    alt={`${vendor.name} logo`}
                     width={100}
                     height={40}
                     className="rounded-md object-contain mb-2 ml-auto"
                 />
-                <p className="font-semibold">{vendor.companyName}</p>
+                <p className="font-semibold">{vendor.name}</p>
                 <p className="text-xs text-muted-foreground whitespace-pre-wrap">{vendor.address}</p>
             </div>
         </header>
@@ -44,8 +44,8 @@ export function InvoiceTemplate5({ vendor, invoice, companyProfile, subtotal, to
                 <p className="text-xs">{companyProfile.address}</p>
             </div>
              <div className="text-right">
-                <p><span className="text-muted-foreground">Date:</span> {format(invoice.invoiceDate, 'dd/MM/yyyy')}</p>
-                <p><span className="text-muted-foreground">Due:</span> {format(invoice.dueDate, 'dd/MM/yyyy')}</p>
+                <p><span className="text-muted-foreground">Date:</span> {format(new Date(invoice.invoiceDate), 'dd/MM/yyyy')}</p>
+                <p><span className="text-muted-foreground">Due:</span> {format(new Date(invoice.dueDate), 'dd/MM/yyyy')}</p>
             </div>
         </section>
 
@@ -61,12 +61,12 @@ export function InvoiceTemplate5({ vendor, invoice, companyProfile, subtotal, to
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {invoice.items.map(item => (
+                        {invoice.lineItems.map(item => (
                         <TableRow key={item.id}>
                             <TableCell>{item.description}</TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.rate)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.quantity * item.rate)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.quantity * item.unitPrice)}</TableCell>
                         </TableRow>
                         ))}
                     </TableBody>
@@ -82,15 +82,21 @@ export function InvoiceTemplate5({ vendor, invoice, companyProfile, subtotal, to
             <div className="space-y-2">
                 <div className="flex justify-between text-muted-foreground"><span>Subtotal:</span><span>{formatCurrency(subtotal)}</span></div>
                 {totalDiscount > 0 && <div className="flex justify-between text-muted-foreground"><span>Discount:</span><span>- {formatCurrency(totalDiscount)}</span></div>}
-                {totalTax > 0 && <div className="flex justify-between text-muted-foreground"><span>VAT (7.5%):</span><span>{formatCurrency(totalTax)}</span></div>}
+                {totalTax > 0 && <div className="flex justify-between text-muted-foreground"><span>VAT (7.5%)</span><span>{formatCurrency(totalTax)}</span></div>}
                 <Separator className="my-2"/>
                 <div className="flex justify-between font-bold text-lg"><span>Total:</span><span>{formatCurrency(grandTotal)}</span></div>
             </div>
         </section>
 
         <footer className="mt-16 text-center text-xs text-muted-foreground border-t pt-4">
-            <p className="font-semibold text-sm text-foreground">Make all payments to: {vendor.bankName}</p>
-            <p>Account Name: {vendor.accountName} | Account Number: {vendor.accountNumber}</p>
+            {bankAccount ? (
+                <>
+                    <p className="font-semibold text-sm text-foreground">Make all payments to: {bankAccount.bankName}</p>
+                    <p>Account Name: {bankAccount.accountName} | Account Number: {bankAccount.accountNumber}</p>
+                </>
+            ) : (
+                <p className="font-semibold text-sm text-foreground">No bank details provided.</p>
+            )}
         </footer>
     </div>
   );

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -6,10 +5,9 @@ import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useEffect, useState, useMemo } from 'react';
-import Image from 'next/image';
 import { format, addDays } from 'date-fns';
 import { useRouter, useParams } from 'next/navigation';
-import { Calendar as CalendarIcon, PlusCircle, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -17,12 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Header } from '@/components/header';
 import { DocumentPage } from '@/components/document-page';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import type { VendorInvoice, Vendor, VendorInvoiceItem } from '@/lib/types';
-import { getVendors } from '@/lib/vendor-utils';
+import type { VendorInvoice, Vendor } from '@/lib/types';
 import { Combobox } from '@/components/ui/combobox';
 import { InvoiceTemplate1 } from '@/components/vendor-invoice-templates/template-1';
 import { InvoiceTemplate2 } from '@/components/vendor-invoice-templates/template-2';
@@ -32,26 +29,23 @@ import { InvoiceTemplate5 } from '@/components/vendor-invoice-templates/template
 import { cn } from '@/lib/utils';
 
 const invoiceItemSchema = z.object({
-  id: z.string(),
+  id: z.string().optional(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(0.01, 'Must be > 0'),
-  rate: z.coerce.number().min(0, 'Cannot be negative'),
+  unitPrice: z.coerce.number().min(0, 'Cannot be negative'),
   discount: z.coerce.number().min(0).optional(),
   tax: z.boolean(),
 });
 
 const invoiceSchema = z.object({
-  id: z.string(),
   vendorId: z.string().min(1, 'Please select a vendor'),
   projectName: z.string().min(1, 'Project name is required'),
   invoiceNumber: z.string(),
   invoiceDate: z.date(),
   dueDate: z.date(),
-  items: z.array(invoiceItemSchema).min(1, 'At least one item is required'),
+  lineItems: z.array(invoiceItemSchema).min(1, 'At least one item is required'),
   notes: z.string().optional(),
 });
-
-type StoredVendorInvoice = Omit<VendorInvoice, 'invoiceDate' | 'dueDate'> & { invoiceDate: string, dueDate: string };
 
 const TAX_RATE = 7.5; // 7.5% VAT
 
@@ -61,68 +55,97 @@ export default function EditVendorInvoicePage() {
   const params = useParams();
   const invoiceId = params.id as string;
   const { toast } = useToast();
+  const { firebaseUser } = useAuth();
   
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [invoice, setInvoice] = useState<VendorInvoice | null>(null);
 
   useEffect(() => {
-    setVendors(getVendors());
-  }, []);
+    if (!firebaseUser) return;
+    const fetchVendors = async () => {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch('/api/vendors', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      setVendors(data);
+    };
+    fetchVendors();
+  }, [firebaseUser]);
 
   const vendorOptions = useMemo(() => 
-    vendors.map(v => ({ label: v.companyName, value: v.id })),
+    vendors.map(v => ({ label: v.name, value: v.id.toString() })),
   [vendors]);
 
   const form = useForm<z.infer<typeof invoiceSchema>>({
     resolver: zodResolver(invoiceSchema),
+    defaultValues: {
+      vendorId: '',
+      projectName: '',
+      invoiceNumber: '',
+      invoiceDate: new Date(),
+      dueDate: addDays(new Date(), 14),
+      lineItems: [],
+      notes: '',
+    },
   });
 
-  const selectedVendorId = useWatch({ control: form.control, name: 'vendorId' });
-  const selectedVendor = useMemo(() => vendors.find(v => v.id === selectedVendorId), [vendors, selectedVendorId]);
-
   useEffect(() => {
-    try {
-      const storedInvoice = localStorage.getItem(`vendor_invoice_${invoiceId}`);
-      if (storedInvoice) {
-        const parsed: StoredVendorInvoice = JSON.parse(storedInvoice);
-        // Ensure items have default values for optional fields
-        const itemsWithDefaults = parsed.items.map(item => ({
-            ...item,
-            discount: item.discount || 0,
-            tax: item.tax || false
-        }));
-        const invoiceData: VendorInvoice = {
-          ...parsed,
-          invoiceDate: new Date(parsed.invoiceDate),
-          dueDate: new Date(parsed.dueDate),
-          items: itemsWithDefaults,
-        };
-        setInvoice(invoiceData);
-        form.reset(invoiceData);
-      } else {
-        toast({ variant: 'destructive', title: 'Invoice not found' });
+    if (!firebaseUser || !invoiceId) return;
+
+    const fetchInvoice = async () => {
+      const token = await firebaseUser.getIdToken();
+      try {
+        const response = await fetch(`/api/vendor-invoices/${invoiceId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch invoice');
+        }
+        const data = await response.json();
+        form.reset({
+            ...data,
+            vendorId: data.vendorId.toString(),
+            invoiceDate: new Date(data.invoiceDate),
+            dueDate: new Date(data.dueDate),
+            lineItems: data.lineItems.map((item: any) => ({
+                id: item.id.toString(),
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                discount: item.discount || 0,
+                tax: item.tax || false,
+            }))
+        });
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error loading invoice' });
         router.push('/vendor-invoice');
       }
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error loading invoice' });
-      router.push('/vendor-invoice');
-    }
-  }, [invoiceId, router, toast, form]);
+    };
+
+    fetchInvoice();
+  }, [invoiceId, router, toast, firebaseUser, form]);
+
+  const selectedVendorId = useWatch({ control: form.control, name: 'vendorId' });
+  const selectedVendor = useMemo(() => vendors.find(v => v.id.toString() === selectedVendorId), [vendors, selectedVendorId]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: 'items',
+    name: 'lineItems',
   });
   
-  const watchedItems = useWatch({ control: form.control, name: 'items' });
+  const watchedItems = useWatch({ control: form.control, name: 'lineItems' });
 
   const { subtotal, totalDiscount, totalTax, grandTotal } = useMemo(() => {
     let subtotal = 0;
     let totalDiscount = 0;
     let totalTax = 0;
 
-    (watchedItems || []).forEach((item: VendorInvoiceItem) => {
-      const amount = (item.quantity || 0) * (item.rate || 0);
+    (watchedItems || []).forEach(item => {
+      const amount = (item.quantity || 0) * (item.unitPrice || 0);
       const discount = item.discount || 0;
       subtotal += amount;
       totalDiscount += discount;
@@ -135,39 +158,41 @@ export default function EditVendorInvoicePage() {
     return { subtotal, totalDiscount, totalTax, grandTotal };
   }, [watchedItems]);
 
-  const handleSubmit = (values: z.infer<typeof invoiceSchema>) => {
+  const handleSubmit = async (values: z.infer<typeof invoiceSchema>) => {
+    if (!firebaseUser) return;
+    const token = await firebaseUser.getIdToken();
     try {
-      const invoiceWithDateAsString: StoredVendorInvoice = {
-        ...values,
-        invoiceDate: values.invoiceDate.toISOString(),
-        dueDate: values.dueDate.toISOString(),
-      };
-      localStorage.setItem(`vendor_invoice_${values.id}`, JSON.stringify(invoiceWithDateAsString));
+      const response = await fetch(`/api/vendor-invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update invoice');
+      }
+
+      const updatedInvoice = await response.json();
+
       toast({
         title: 'Invoice Updated',
-        description: `Invoice ${values.invoiceNumber} has been updated.`,
+        description: `Invoice ${updatedInvoice.invoiceNumber} has been updated.`,
       });
-      router.push(`/vendor-invoice/${values.id}`);
+      router.push(`/vendor-invoice/${updatedInvoice.id}`);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error Saving Invoice' });
+      toast({ variant: 'destructive', title: 'Error Updating Invoice' });
     }
   };
-
-  if (!invoice) {
-    return (
-        <div className="flex flex-1 flex-col">
-            <Header title="Loading..." />
-            <main className="flex-1 p-6 text-center"><p>Loading invoice data...</p></main>
-        </div>
-    );
-  }
 
   const renderTemplatePreview = () => {
     if (!selectedVendor) return <div className="border rounded-lg p-8 text-center text-muted-foreground">Select a vendor to see a preview</div>;
     
     const templateProps = {
       vendor: selectedVendor,
-      invoice: form.getValues() as VendorInvoice,
+      invoice: form.getValues(),
       companyProfile,
       isEditing: true,
       form,
@@ -193,11 +218,10 @@ export default function EditVendorInvoicePage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <Header title={`Edit Vendor Invoice ${invoice.invoiceNumber}`} />
+      <Header title="Edit Vendor Invoice" />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
-        <div className="flex justify-end sticky top-[57px] sm:top-0 z-10 py-2 bg-background no-print gap-2">
-            <Button variant="outline" onClick={() => router.push(`/vendor-invoice/${invoiceId}`)}>Cancel</Button>
-            <Button type="submit" form="invoice-form">Save Changes</Button>
+        <div className="flex justify-end sticky top-[57px] sm:top-0 z-10 py-2 bg-background no-print">
+          <Button type="submit" form="invoice-form" disabled={!selectedVendor}>Save Changes</Button>
         </div>
         <Form {...form}>
           <form id="invoice-form" onSubmit={form.handleSubmit(handleSubmit)}>
@@ -287,5 +311,3 @@ export default function EditVendorInvoicePage() {
     </div>
   );
 }
-
-    

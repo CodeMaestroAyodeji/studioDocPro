@@ -1,4 +1,3 @@
-
 'use client';
 
 import { DocumentList } from '@/components/document-list';
@@ -49,7 +48,6 @@ function VendorInvoiceListPage() {
     { 
       accessor: 'vendor.name', 
       header: 'Vendor',
-      cell: (value: any, item: VendorInvoiceWithVendor) => item.vendor.name
     },
     { 
         accessor: 'invoiceDate', 
@@ -64,7 +62,7 @@ function VendorInvoiceListPage() {
     { accessor: 'status', header: 'Status' },
   ];
   
-  const searchFields: (keyof VendorInvoice)[] = ['invoiceNumber', 'status'];
+  const searchFields = ['invoiceNumber', 'status', 'vendor.name'];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -90,4 +88,3 @@ function VendorInvoiceListPage() {
 }
 
 export default withAuthorization(VendorInvoiceListPage, PERMISSIONS.VENDOR_INVOICE_VIEW);
-

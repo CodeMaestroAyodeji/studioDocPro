@@ -1,4 +1,3 @@
-
 'use client';
 
 import { FormField, FormControl } from '../ui/form';
@@ -16,10 +15,10 @@ export function EditableTemplateFields({ form, formatCurrency }: EditableTemplat
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: 'items',
+    name: 'lineItems',
   });
   
-  const watchedItems = form.watch('items');
+  const watchedItems = form.watch('lineItems');
 
   return (
     <>
@@ -28,7 +27,7 @@ export function EditableTemplateFields({ form, formatCurrency }: EditableTemplat
           <TableRow>
             <TableHead className="w-[35%] min-w-[200px]">Description</TableHead>
             <TableHead>Qty</TableHead>
-            <TableHead>Rate</TableHead>
+            <TableHead>Unit Price</TableHead>
             <TableHead>Discount</TableHead>
             <TableHead>Tax</TableHead>
             <TableHead className="text-right">Amount</TableHead>
@@ -39,22 +38,22 @@ export function EditableTemplateFields({ form, formatCurrency }: EditableTemplat
           {fields.map((field, index) => (
             <TableRow key={field.id}>
               <TableCell>
-                <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => <Input {...field} />} />
+                <FormField control={form.control} name={`lineItems.${index}.description`} render={({ field }) => <Input {...field} value={field.value ?? ''} />} />
               </TableCell>
               <TableCell>
-                <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => <Input type="number" {...field} className="min-w-[60px]" />} />
+                <FormField control={form.control} name={`lineItems.${index}.quantity`} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} className="min-w-[60px]" />} />
               </TableCell>
               <TableCell>
-                <FormField control={form.control} name={`items.${index}.rate`} render={({ field }) => <Input type="number" {...field} className="min-w-[80px]" />} />
+                <FormField control={form.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} className="min-w-[80px]" />} />
               </TableCell>
               <TableCell>
-                <FormField control={form.control} name={`items.${index}.discount`} render={({ field }) => <Input type="number" {...field} className="min-w-[80px]" />} />
+                <FormField control={form.control} name={`lineItems.${index}.discount`} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} className="min-w-[80px]" />} />
               </TableCell>
               <TableCell className="text-center">
-                <FormField control={form.control} name={`items.${index}.tax`} render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />} />
+                <FormField control={form.control} name={`lineItems.${index}.tax`} render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />} />
               </TableCell>
               <TableCell className="text-right font-medium">
-                {formatCurrency(((watchedItems && watchedItems[index]?.quantity) || 0) * ((watchedItems && watchedItems[index]?.rate) || 0))}
+                {formatCurrency(((watchedItems && watchedItems[index]?.quantity) || 0) * ((watchedItems && watchedItems[index]?.unitPrice) || 0))}
               </TableCell>
               <TableCell>
                 <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
@@ -69,7 +68,7 @@ export function EditableTemplateFields({ form, formatCurrency }: EditableTemplat
         <Button
           type="button"
           variant="outline"
-          onClick={() => append({ id: crypto.randomUUID(), description: '', quantity: 1, rate: 0, discount: 0, tax: true })}
+          onClick={() => append({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, discount: 0, tax: true })}
         >
           <PlusCircle className="mr-2 h-4 w-4" /> Add Item
         </Button>

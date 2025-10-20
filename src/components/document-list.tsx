@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -16,17 +15,17 @@ import { Card, CardContent } from './ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
 import { useAuth } from '@/contexts/auth-context';
 
-type Column = {
+type Column<T> = {
   accessor: string;
   header: string;
-  cell?: (value: any) => React.ReactNode;
+  cell?: (value: any, item: T) => React.ReactNode;
 };
 
 type DocumentListProps<T extends { id?: string; date?: Date }> = {
-  columns: Column[];
+  columns: Column<T>[];
   data?: T[];
   dataFetcher?: () => Promise<T[]>;
-  searchFields: (keyof T)[];
+  searchFields: (keyof T | string)[];
   storageKeyPrefix: string;
   viewUrlPrefix: string;
   deleteUrlPrefix?: string;
@@ -35,6 +34,10 @@ type DocumentListProps<T extends { id?: string; date?: Date }> = {
   isDeletableCheck?: (itemId: string) => boolean;
   deleteDisabledMessage?: string;
 };
+
+const getNestedValue = (obj: any, path: string) => {
+    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+}
 
 export function DocumentList<T extends { id?: string; date?: Date, poNumber?: string, voucherNumber?: string, invoiceNumber?: string, receiptNumber?: string }>({
   columns,
@@ -70,7 +73,7 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
     if (searchTerm) {
       filtered = filtered.filter(doc =>
         searchFields.some(field =>
-          String(doc[field]).toLowerCase().includes(searchTerm.toLowerCase())
+          String(getNestedValue(doc, field as string)).toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
     }
@@ -158,10 +161,10 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
     setSelectedMonth('all');
   }
 
-  const renderCell = (item: T, column: Column) => {
-    const value = item[column.accessor as keyof T];
+  const renderCell = (item: T, column: Column<T>) => {
+    const value = getNestedValue(item, column.accessor);
     if (column.cell) {
-      return column.cell(value);
+      return column.cell(value, item);
     }
     return <>{String(value || '')}</>;
   };

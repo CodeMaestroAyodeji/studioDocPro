@@ -1,4 +1,3 @@
-
 import type { Vendor, VendorInvoice, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import Image from 'next/image';
@@ -15,27 +14,28 @@ const formatCurrency = (amount: number) => {
 
 export function InvoiceTemplate1({ vendor, invoice, companyProfile, subtotal, totalDiscount, totalTax, grandTotal, isEditing = false, form }: TemplateProps) {
   const amountInWords = numberToWords(grandTotal);
+  const bankAccount = vendor.bankAccounts && vendor.bankAccounts[0];
 
   return (
     <div className="text-sm">
         <header className="grid grid-cols-2 gap-8 mb-12">
             <div>
                 <Image
-                src={vendor.logoUrl || generateAvatar(vendor.companyName)}
-                alt={`${vendor.companyName} logo`}
+                src={vendor.logoUrl || generateAvatar(vendor.name)}
+                alt={`${vendor.name} logo`}
                 width={120}
                 height={50}
                 className="rounded-md object-contain mb-4"
                 />
-                <h1 className="font-bold text-lg">{vendor.companyName}</h1>
+                <h1 className="font-bold text-lg">{vendor.name}</h1>
                 <p className="text-muted-foreground whitespace-pre-wrap">{vendor.address}</p>
             </div>
             <div className="text-right">
                 <h2 className="text-2xl font-bold text-primary mb-4">INVOICE</h2>
                 <div className="space-y-1 text-muted-foreground">
                     <p><strong>Invoice #:</strong> {invoice.invoiceNumber}</p>
-                    <p><strong>Date:</strong> {format(invoice.invoiceDate, 'dd MMMM, yyyy')}</p>
-                    <p><strong>Due:</strong> {format(invoice.dueDate, 'dd MMMM, yyyy')}</p>
+                    <p><strong>Date:</strong> {format(new Date(invoice.invoiceDate), 'dd MMMM, yyyy')}</p>
+                    <p><strong>Due:</strong> {format(new Date(invoice.dueDate), 'dd MMMM, yyyy')}</p>
                 </div>
             </div>
         </header>
@@ -64,12 +64,12 @@ export function InvoiceTemplate1({ vendor, invoice, companyProfile, subtotal, to
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {invoice.items.map(item => (
+                    {invoice.lineItems.map(item => (
                     <TableRow key={item.id}>
                         <TableCell>{item.description}</TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.rate)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.quantity * item.rate)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.quantity * item.unitPrice)}</TableCell>
                     </TableRow>
                     ))}
                 </TableBody>
@@ -94,9 +94,9 @@ export function InvoiceTemplate1({ vendor, invoice, companyProfile, subtotal, to
                     <span className="font-semibold">{formatCurrency(subtotal)}</span>
                 </div>
                 {totalDiscount > 0 && (
-                     <div className="flex justify-between">
+                    <div className="flex justify-between">
                         <span className="text-muted-foreground">Discount:</span>
-                        <span className="font-semibold">- {formatCurrency(totalDiscount)}</span>
+                        <span className="font-semibold">{formatCurrency(totalDiscount)}</span>
                     </div>
                 )}
                 {totalTax > 0 && (
@@ -115,9 +115,13 @@ export function InvoiceTemplate1({ vendor, invoice, companyProfile, subtotal, to
 
         <footer className="text-center text-xs">
             <p className="font-semibold">Payment Details</p>
-            <p className="text-muted-foreground">
-                Bank: {vendor.bankName} | Account: {vendor.accountNumber} ({vendor.accountName})
-            </p>
+            {bankAccount ? (
+                <p className="text-muted-foreground">
+                    Bank: {bankAccount.bankName} | Account: {bankAccount.accountNumber} ({bankAccount.accountName})
+                </p>
+            ) : (
+                <p className="text-muted-foreground">No bank details provided.</p>
+            )}
         </footer>
     </div>
   );

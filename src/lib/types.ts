@@ -119,7 +119,7 @@ export type VendorInvoiceItem = {
   id: string;
   description: string;
   quantity: number;
-  rate: number;
+  unitPrice: number;
   discount?: number;
   tax: boolean;
 };
@@ -131,7 +131,7 @@ export type VendorInvoice = {
   invoiceNumber: string;
   invoiceDate: Date;
   dueDate: Date;
-  items: VendorInvoiceItem[];
+  lineItems: VendorInvoiceItem[];
   notes?: string;
 };
 
