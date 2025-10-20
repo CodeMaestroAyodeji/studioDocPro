@@ -39,7 +39,7 @@ export default function VendorInvoicePreviewPage() {
     const fetchInvoice = async () => {
       const token = await firebaseUser.getIdToken();
       try {
-        const response = await fetch(`/api/vendor-invoices/${invoiceId}`, {
+        const response = await fetch(`/api/vendor-invoices/${invoiceId}?v=${new Date().getTime()}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -61,7 +61,7 @@ export default function VendorInvoicePreviewPage() {
 
   const { subtotal, totalDiscount, totalTax, grandTotal } = useMemo(() => {
     if (!invoice) return { subtotal: 0, totalDiscount: 0, totalTax: 0, grandTotal: 0 };
-    
+
     let subtotal = 0;
     let totalDiscount = 0;
     let totalTax = 0;
@@ -69,11 +69,18 @@ export default function VendorInvoicePreviewPage() {
     invoice.lineItems.forEach(item => {
       const amount = item.quantity * item.unitPrice;
       const discount = item.discount || 0;
-      subtotal += amount;
-      totalDiscount += discount;
+      
       if (item.tax) {
-        totalTax += (amount - discount) * (TAX_RATE / 100);
+        // Amount is tax-inclusive. We need to find the base amount and tax.
+        const baseAmount = amount / (1 + TAX_RATE / 100);
+        const taxAmount = amount - baseAmount;
+        subtotal += baseAmount;
+        totalTax += taxAmount;
+      } else {
+        // Amount is pre-tax.
+        subtotal += amount;
       }
+      totalDiscount += discount;
     });
 
     const grandTotal = subtotal - totalDiscount + totalTax;

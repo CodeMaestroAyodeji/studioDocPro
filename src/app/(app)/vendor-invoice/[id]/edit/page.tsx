@@ -147,11 +147,18 @@ export default function EditVendorInvoicePage() {
     (watchedItems || []).forEach(item => {
       const amount = (item.quantity || 0) * (item.unitPrice || 0);
       const discount = item.discount || 0;
-      subtotal += amount;
-      totalDiscount += discount;
+      
       if (item.tax) {
-        totalTax += (amount - discount) * (TAX_RATE / 100);
+        // Amount is tax-inclusive. We need to find the base amount and tax.
+        const baseAmount = amount / (1 + TAX_RATE / 100);
+        const taxAmount = amount - baseAmount;
+        subtotal += baseAmount;
+        totalTax += taxAmount;
+      } else {
+        // Amount is pre-tax.
+        subtotal += amount;
       }
+      totalDiscount += discount;
     });
 
     const grandTotal = subtotal - totalDiscount + totalTax;

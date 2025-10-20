@@ -14,6 +14,7 @@ const formatCurrency = (amount: number) => {
 export function InvoiceTemplate4({ vendor, invoice, companyProfile, subtotal, totalDiscount, totalTax, grandTotal, isEditing = false, form }: TemplateProps) {
   const amountInWords = numberToWords(grandTotal);
   const bankAccount = vendor.bankAccounts && vendor.bankAccounts[0];
+  const TAX_RATE = 7.5;
 
   return (
     <div className="text-sm">
@@ -65,14 +66,18 @@ export function InvoiceTemplate4({ vendor, invoice, companyProfile, subtotal, to
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {invoice.lineItems.map(item => (
-                        <TableRow key={item.id}>
-                            <TableCell>{item.description}</TableCell>
-                            <TableCell className="text-center">{item.quantity}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.quantity * item.unitPrice)}</TableCell>
-                        </TableRow>
-                        ))}
+                        {invoice.lineItems.map(item => {
+                            const rate = item.tax ? item.unitPrice / (1 + TAX_RATE / 100) : item.unitPrice;
+                            const amount = item.quantity * rate;
+                            return (
+                                <TableRow key={item.id}>
+                                    <TableCell>{item.description}</TableCell>
+                                    <TableCell className="text-center">{item.quantity}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(rate)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(amount)}</TableCell>
+                                </TableRow>
+                            );
+                        })}
                     </TableBody>
                 </Table>
             )}
@@ -81,7 +86,7 @@ export function InvoiceTemplate4({ vendor, invoice, companyProfile, subtotal, to
         <section className="flex justify-end mb-8">
             <div className="w-full md:w-2/5 space-y-2">
                 <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
-                {totalDiscount > 0 && <div className="flex justify-between"><span>Discount</span><span>- {formatCurrency(totalDiscount)}</span></div>}
+                {totalDiscount > 0 && <div className="flex justify-between"><span>Discount</span><span>{formatCurrency(totalDiscount)}</span></div>}
                 {totalTax > 0 && <div className="flex justify-between"><span>VAT (7.5%)</span><span>{formatCurrency(totalTax)}</span></div>}
             </div>
         </section>
