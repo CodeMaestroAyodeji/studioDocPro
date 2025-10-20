@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import db from '@/lib/prisma';
 import { z } from 'zod';
@@ -10,6 +9,13 @@ const vendorSchema = z.object({
     email: z.string().email('Invalid email address').optional().or(z.literal('')),
     phone: z.string().optional(),
     address: z.string().optional(),
+    website: z.string().optional(),
+    tin: z.string().optional(),
+    logoUrl: z.string().optional(),
+    invoiceTemplate: z.string().optional(),
+    bankName: z.string().optional(),
+    accountName: z.string().optional(),
+    accountNumber: z.string().optional(),
 });
 
 async function verifyToken(request: Request) {
@@ -35,6 +41,12 @@ export async function GET(request: Request, context: { params: { id: string } })
         const { id } = await context.params;
         const vendor = await db.vendor.findUnique({
             where: { id: parseInt(id, 10) },
+            include: { 
+                bankAccounts: true,
+                _count: {
+                    select: { vendorInvoices: true }
+                }
+            },
         });
 
         if (!vendor) {
@@ -58,11 +70,38 @@ export async function PUT(request: Request, context: { params: { id: string } })
         const { id } = await context.params;
         const body = await request.json();
         const vendorData = vendorSchema.parse(body);
+        const { bankName, accountName, accountNumber, ...vendorInfo } = vendorData;
 
         const updatedVendor = await db.vendor.update({
             where: { id: parseInt(id, 10) },
-            data: vendorData,
+            data: vendorInfo,
         });
+
+        if (bankName && accountName && accountNumber) {
+            const existingBankAccount = await db.vendorBankAccount.findFirst({
+                where: { vendorId: parseInt(id, 10) },
+            });
+
+            if (existingBankAccount) {
+                await db.vendorBankAccount.update({
+                    where: { id: existingBankAccount.id },
+                    data: { bankName, accountName, accountNumber },
+                });
+            } else {
+                await db.vendorBankAccount.create({
+                    data: {
+                        bankName,
+                        accountName,
+                        accountNumber,
+                        vendorId: parseInt(id, 10),
+                    },
+                });
+            }
+        } else {
+            await db.vendorBankAccount.deleteMany({
+                where: { vendorId: parseInt(id, 10) },
+            });
+        }
 
         return NextResponse.json(updatedVendor);
     } catch (error) {
@@ -82,6 +121,7 @@ export async function DELETE(request: Request, context: { params: { id: string }
 
     try {
         const { id } = await context.params;
+        await db.vendorBankAccount.deleteMany({ where: { vendorId: parseInt(id, 10) } });
         await db.vendor.delete({
             where: { id: parseInt(id, 10) },
         });

@@ -9,6 +9,8 @@ import type { Vendor } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { Pencil, Trash2, ArrowLeft } from 'lucide-react';
 
+import { VendorLogo } from '@/components/vendor-logo';
+
 const DetailRow = ({ label, value }: { label: string; value: string | undefined | null }) => (
     <div className="flex items-start py-2">
         <p className="text-sm text-muted-foreground font-semibold w-32 shrink-0">{label}</p>
@@ -102,6 +104,9 @@ export default function VendorViewPage() {
             <Button variant="outline" onClick={() => router.push(`/vendors/${vendorId}/edit`)}><Pencil className="mr-2 h-4 w-4" />Edit</Button>
             <Button variant="destructive" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>
         </div>
+        <div className="mb-4">
+            <VendorLogo logoUrl={vendor.logoUrl} companyName={vendor.name} />
+        </div>
         <div className="p-6 border rounded-lg">
             <h2 className="text-xl font-semibold mb-4">Vendor Details</h2>
             <DetailRow label="Company Name" value={vendor.name} />
@@ -109,7 +114,21 @@ export default function VendorViewPage() {
             <DetailRow label="Email" value={vendor.email} />
             <DetailRow label="Phone" value={vendor.phone} />
             <DetailRow label="Address" value={vendor.address} />
+            <DetailRow label="Website" value={vendor.website} />
+            <DetailRow label="TIN" value={vendor.tin} />
         </div>
+        {vendor.bankAccounts && vendor.bankAccounts.length > 0 && (
+            <div className="p-6 border rounded-lg mt-4">
+                <h2 className="text-xl font-semibold mb-4">Bank Details</h2>
+                {vendor.bankAccounts.map((account) => (
+                    <div key={account.id}>
+                        <DetailRow label="Bank Name" value={account.bankName} />
+                        <DetailRow label="Account Name" value={account.accountName} />
+                        <DetailRow label="Account Number" value={account.accountNumber} />
+                    </div>
+                ))}
+            </div>
+        )}
       </main>
     </div>
   );

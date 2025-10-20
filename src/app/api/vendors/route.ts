@@ -14,6 +14,13 @@ const vendorSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
+  website: z.string().optional(),
+  tin: z.string().optional(),
+  logoUrl: z.string().optional(),
+  invoiceTemplate: z.string().optional(),
+  bankName: z.string().optional(),
+  accountName: z.string().optional(),
+  accountNumber: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -36,19 +43,26 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    console.log("Request body:", body);
     const vendorData = vendorSchema.parse(body);
-    console.log("Parsed vendor data:", vendorData);
+
+    const { bankName, accountName, accountNumber, ...vendorInfo } = vendorData;
 
     const vendor = await prisma.vendor.create({
       data: {
-        name: vendorData.name,
-        contactName: vendorData.contactName,
-        email: vendorData.email,
-        phone: vendorData.phone,
-        address: vendorData.address,
+        ...vendorInfo,
       },
     });
+
+    if (bankName && accountName && accountNumber) {
+      await prisma.vendorBankAccount.create({
+        data: {
+          bankName,
+          accountName,
+          accountNumber,
+          vendorId: vendor.id,
+        },
+      });
+    }
 
     return NextResponse.json(vendor, { status: 201 });
   } catch (error) {
@@ -91,7 +105,6 @@ export async function GET() {
       id: String(vendor.id),
       companyName: vendor.name,
       contactName: vendor.contactName || 'N/A',
-      invoiceTemplate: 'template-1',
     }));
 
     return NextResponse.json(formattedVendors);

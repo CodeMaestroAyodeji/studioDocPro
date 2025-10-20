@@ -1,4 +1,3 @@
-
 export type Signatory = {
   id: string;
   name: string;
@@ -92,9 +91,16 @@ export type PaymentReceipt = {
     amountDue?: number;
 };
 
+export type VendorBankAccount = {
+  id: string;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+};
+
 export type Vendor = {
   id: string;
-  companyName: string;
+  name: string;
   contactName: string;
   address: string;
   phone: string;
@@ -103,9 +109,10 @@ export type Vendor = {
   tin?: string;
   logoUrl?: string;
   invoiceTemplate: string;
-  bankName?: string;
-  accountName?: string;
-  accountNumber?: string;
+  bankAccounts: VendorBankAccount[];
+  _count?: {
+    vendorInvoices: number;
+  };
 };
 
 export type VendorInvoiceItem = {

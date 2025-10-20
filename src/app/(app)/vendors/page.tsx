@@ -51,6 +51,8 @@ function VendorListPage() {
     { accessor: 'companyName', header: 'Company Name' },
     { accessor: 'contactName', header: 'Contact Name' },
     { accessor: 'phone', header: 'Phone' },
+    { accessor: 'website', header: 'Website' },
+    { accessor: 'tin', header: 'TIN' },
     { 
         accessor: 'invoiceTemplate', 
         header: 'Template Name',

@@ -2,14 +2,16 @@
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
+import { VendorLogo } from '@/components/vendor-logo';
 
 const vendorSchema = z.object({
   name: z.string().min(1, 'Company Name is required'),
@@ -17,7 +19,22 @@ const vendorSchema = z.object({
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().optional(),
   address: z.string().optional(),
+  website: z.string().optional(),
+  tin: z.string().optional(),
+  bankName: z.string().optional(),
+  accountName: z.string().optional(),
+  accountNumber: z.string().optional(),
+  logoUrl: z.string().optional(),
+  invoiceTemplate: z.string().optional(),
 });
+
+const invoiceTemplates = [
+  { id: 'template-1', name: 'Classic Professional' },
+  { id: 'template-2', name: 'Modern Minimalist' },
+  { id: 'template-3', name: 'Bold & Creative' },
+  { id: 'template-4', name: 'Elegant & Simple' },
+  { id: 'template-5', name: 'Corporate Formal' },
+];
 
 export default function NewVendorPage() {
   const { toast } = useToast();
@@ -32,23 +49,23 @@ export default function NewVendorPage() {
       email: '',
       phone: '',
       address: '',
+      website: '',
+      tin: '',
+      bankName: '',
+      accountName: '',
+      accountNumber: '',
+      logoUrl: '',
+      invoiceTemplate: 'template-1',
     },
   });
 
   const handleSubmit = async (values: z.infer<typeof vendorSchema>) => {
-    if (!firebaseUser) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'You must be logged in to create a vendor.',
-        });
-        return;
-    }
+    if (!firebaseUser) return;
 
     const token = await firebaseUser.getIdToken();
 
     try {
-      const response = await fetch('/api/vendors', {
+      const response = await fetch(`/api/vendors`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +84,7 @@ export default function NewVendorPage() {
         title: 'Vendor Created',
         description: `Vendor "${newVendor.name}" has been successfully created.`,
       });
-      router.push('/vendors');
+      router.push(`/vendors/${newVendor.id}`);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -84,6 +101,22 @@ export default function NewVendorPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
             <div className="p-6 border rounded-lg">
+                <div className="mb-4">
+                    <VendorLogo logoUrl={form.watch('logoUrl')} companyName={form.watch('name')} />
+                </div>
+                <FormField
+                    control={form.control}
+                    name="logoUrl"
+                    render={({ field }) => (
+                        <FormItem className="mt-4">
+                            <FormLabel>Logo URL</FormLabel>
+                            <FormControl>
+                            <Input placeholder="e.g. https://example.com/logo.png" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
               <FormField
                 control={form.control}
                 name="name"
@@ -149,9 +182,104 @@ export default function NewVendorPage() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="website"
+                render={({ field }) => (
+                  <FormItem className="mt-4">
+                    <FormLabel>Website</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. https://acme.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="tin"
+                render={({ field }) => (
+                  <FormItem className="mt-4">
+                    <FormLabel>TIN</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. 123-456-789" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="p-6 border rounded-lg mt-4">
+                <h3 className="text-lg font-medium">Bank Details</h3>
+                <FormField
+                    control={form.control}
+                    name="bankName"
+                    render={({ field }) => (
+                    <FormItem className="mt-4">
+                        <FormLabel>Bank Name</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. Chase Bank" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="accountName"
+                    render={({ field }) => (
+                    <FormItem className="mt-4">
+                        <FormLabel>Account Name</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. Acme Inc." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="accountNumber"
+                    render={({ field }) => (
+                    <FormItem className="mt-4">
+                        <FormLabel>Account Number</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. 1234567890" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+            <div className="p-6 border rounded-lg mt-4">
+                <h3 className="text-lg font-medium">Invoice Template</h3>
+                <FormField
+                    control={form.control}
+                    name="invoiceTemplate"
+                    render={({ field }) => (
+                        <FormItem className="mt-4">
+                            <FormLabel>Template</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a template" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {invoiceTemplates.map(template => (
+                                        <SelectItem key={template.id} value={template.id}>
+                                            {template.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
             </div>
             <div className="flex justify-end">
-              <Button type="submit">Save Vendor</Button>
+              <Button type="submit">Create Vendor</Button>
             </div>
           </form>
         </Form>

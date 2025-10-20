@@ -138,6 +138,7 @@ model Vendor {
   website         String?
   tin             String?
   logoUrl         String?
+  invoiceTemplate String           @default("template-1")
   paymentVouchers PaymentVoucher[]
   purchaseOrders  PurchaseOrder[]
   vendorInvoices  VendorInvoice[]
