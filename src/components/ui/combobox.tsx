@@ -27,10 +27,12 @@ type ComboboxProps = {
     placeholder?: string;
     searchPlaceholder?: string;
     emptyMessage?: string;
+    onCreate?: (value: string) => void;
 }
 
-export function Combobox({ options, value, onChange, placeholder, searchPlaceholder, emptyMessage }: ComboboxProps) {
+export function Combobox({ options, value, onChange, placeholder, searchPlaceholder, emptyMessage, onCreate }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const [search, setSearch] = React.useState('')
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -56,8 +58,18 @@ export function Combobox({ options, value, onChange, placeholder, searchPlacehol
                 return 0
             }}
         >
-          <CommandInput placeholder={searchPlaceholder || "Search..."} />
-          <CommandEmpty>{emptyMessage || "No options found."}</CommandEmpty>
+          <CommandInput placeholder={searchPlaceholder || "Search..."} onValueChange={setSearch} />
+          <CommandEmpty>
+            {onCreate && search && (
+              <CommandItem onSelect={() => {
+                onChange(search)
+                onCreate(search)
+                setOpen(false)
+              }}>
+                Create "{search}"
+              </CommandItem>
+            ) || (emptyMessage || "No options found.")}
+          </CommandEmpty>
           <CommandGroup>
             {options.map((option) => (
               <CommandItem

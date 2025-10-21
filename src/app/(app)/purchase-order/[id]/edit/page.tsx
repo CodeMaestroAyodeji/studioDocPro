@@ -3,7 +3,7 @@
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useRouter, useParams } from 'next/navigation';
 import { Calendar as CalendarIcon, PlusCircle, Trash2 } from 'lucide-react';
@@ -24,6 +24,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useCompanyProfile } from '@/contexts/company-profile-context';
 import { formatCurrency } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const lineItemSchema = z.object({
   id: z.any().optional(),
@@ -58,6 +59,8 @@ export default function EditPurchaseOrderPage() {
   const [po, setPo] = useState<FullPurchaseOrder | null>(null);
   const poId = params.id as string;
   const [originalUnitPrices, setOriginalUnitPrices] = useState<{ [key: number]: number }>({});
+  const [isAddVendorDialogOpen, setIsAddVendorDialogOpen] = useState(false);
+  const [newVendorName, setNewVendorName] = useState('');
 
   const form = useForm<z.infer<typeof poSchema>>({
     resolver: zodResolver(poSchema),
@@ -87,19 +90,21 @@ export default function EditPurchaseOrderPage() {
     }
   };
 
+  const fetchVendors = useCallback(async () => {
+    if (!firebaseUser) return;
+    const token = await firebaseUser.getIdToken();
+    try {
+      const response = await fetch('/api/vendors', { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error('Failed to fetch vendors');
+      setVendors(await response.json());
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch vendors.' });
+    }
+  }, [firebaseUser, toast]);
+
   useEffect(() => {
     if (!firebaseUser) return;
     const token = firebaseUser.getIdToken();
-
-    const fetchVendors = async () => {
-      try {
-        const response = await fetch('/api/vendors', { headers: { Authorization: `Bearer ${await token}` } });
-        if (!response.ok) throw new Error('Failed to fetch vendors');
-        setVendors(await response.json());
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch vendors.' });
-      }
-    };
 
     const fetchPurchaseOrder = async () => {
       try {
@@ -125,7 +130,7 @@ export default function EditPurchaseOrderPage() {
     if (poId) {
       fetchPurchaseOrder();
     }
-  }, [poId, toast, form.reset, firebaseUser]);
+  }, [poId, toast, form.reset, firebaseUser, fetchVendors]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -145,6 +150,27 @@ export default function EditPurchaseOrderPage() {
     const tax = total - subtotal;
     return { subtotal, tax, total };
   }, [watchedItems, originalUnitPrices]);
+
+  const handleCreateVendor = async () => {
+    if (!firebaseUser || !newVendorName) return;
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch('/api/vendors', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: newVendorName }),
+    });
+
+    if (response.ok) {
+      const newVendor = await response.json();
+      await fetchVendors();
+      form.setValue('vendorId', String(newVendor.id));
+      setIsAddVendorDialogOpen(false);
+      setNewVendorName('');
+    }
+  };
 
   const handleSubmit = async (values: z.infer<typeof poSchema>) => {
     if (!firebaseUser) return;
@@ -190,30 +216,33 @@ export default function EditPurchaseOrderPage() {
                 </div>
 
                 <section className="grid md:grid-cols-3 gap-x-8 mb-8">
-                    <FormField
-                    control={form.control}
-                    name="vendorId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel className="font-semibold text-muted-foreground">VENDOR</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a vendor" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {vendors.map((vendor) => (
-                                <SelectItem key={vendor.id} value={String(vendor.id)}>
-                                {vendor.name}
-                                </SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                    <div className="flex items-end gap-2">
+                        <FormField
+                        control={form.control}
+                        name="vendorId"
+                        render={({ field }) => (
+                            <FormItem className="flex-1">
+                            <FormLabel className="font-semibold text-muted-foreground">VENDOR</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a vendor" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {vendors.map((vendor) => (
+                                    <SelectItem key={vendor.id} value={String(vendor.id)}>
+                                    {vendor.name}
+                                    </SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <Button type="button" onClick={() => setIsAddVendorDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
+                    </div>
                     <FormField
                     control={form.control}
                     name="projectName"
@@ -352,6 +381,20 @@ export default function EditPurchaseOrderPage() {
             </div>
           </form>
         </Form>
+        <Dialog open={isAddVendorDialogOpen} onOpenChange={setIsAddVendorDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add New Vendor</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    <Input placeholder="Vendor Name" value={newVendorName} onChange={(e) => setNewVendorName(e.target.value)} />
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsAddVendorDialogOpen(false)}>Cancel</Button>
+                    <Button type="button" onClick={handleCreateVendor}>Create</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

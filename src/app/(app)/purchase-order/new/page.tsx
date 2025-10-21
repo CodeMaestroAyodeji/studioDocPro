@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker } from '@/components/ui/date-picker';
 import { Header } from '@/components/header';
 import { useAuth } from '@/contexts/auth-context';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import type { Vendor } from '@prisma/client';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const lineItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
@@ -44,6 +45,8 @@ export default function NewPurchaseOrderPage() {
   const { state: companyProfile } = useCompanyProfile();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [originalUnitPrices, setOriginalUnitPrices] = useState<{ [key: number]: number }>({});
+  const [isAddVendorDialogOpen, setIsAddVendorDialogOpen] = useState(false);
+  const [newVendorName, setNewVendorName] = useState('');
 
   const form = useForm<POFormValues>({
     resolver: zodResolver(poSchema),
@@ -92,22 +95,44 @@ export default function NewPurchaseOrderPage() {
     return { subtotal, tax, total };
   }, [watchedItems, originalUnitPrices]);
 
-  useEffect(() => {
-    const fetchVendors = async () => {
-      if (!firebaseUser) return;
-      const token = await firebaseUser.getIdToken();
-      const response = await fetch('/api/vendors', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setVendors(data);
-      }
-    };
-    fetchVendors();
+  const fetchVendors = useCallback(async () => {
+    if (!firebaseUser) return;
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch('/api/vendors', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      setVendors(data);
+    }
   }, [firebaseUser]);
+
+  useEffect(() => {
+    fetchVendors();
+  }, [fetchVendors]);
+
+  const handleCreateVendor = async () => {
+    if (!firebaseUser || !newVendorName) return;
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch('/api/vendors', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: newVendorName }),
+    });
+
+    if (response.ok) {
+      const newVendor = await response.json();
+      await fetchVendors();
+      form.setValue('vendorId', String(newVendor.id));
+      setIsAddVendorDialogOpen(false);
+      setNewVendorName('');
+    }
+  };
 
   const onSubmit = async (data: POFormValues) => {
     if (!firebaseUser) return;
@@ -148,30 +173,33 @@ export default function NewPurchaseOrderPage() {
                 </div>
 
                 <section className="grid md:grid-cols-3 gap-x-8 mb-8">
-                    <FormField
-                    control={form.control}
-                    name="vendorId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel className="font-semibold text-muted-foreground">VENDOR</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a vendor" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {vendors.map((vendor) => (
-                                <SelectItem key={vendor.id} value={String(vendor.id)}>
-                                {vendor.name}
-                                </SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                    <div className="flex items-end gap-2">
+                        <FormField
+                        control={form.control}
+                        name="vendorId"
+                        render={({ field }) => (
+                            <FormItem className="flex-1">
+                            <FormLabel className="font-semibold text-muted-foreground">VENDOR</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a vendor" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {vendors.map((vendor) => (
+                                    <SelectItem key={vendor.id} value={String(vendor.id)}>
+                                    {vendor.name}
+                                    </SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <Button type="button" onClick={() => setIsAddVendorDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
+                    </div>
                     <FormField
                     control={form.control}
                     name="projectName"
@@ -292,6 +320,20 @@ export default function NewPurchaseOrderPage() {
             <Button type="submit">Save Purchase Order</Button>
           </form>
         </Form>
+        <Dialog open={isAddVendorDialogOpen} onOpenChange={setIsAddVendorDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add New Vendor</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    <Input placeholder="Vendor Name" value={newVendorName} onChange={(e) => setNewVendorName(e.target.value)} />
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsAddVendorDialogOpen(false)}>Cancel</Button>
+                    <Button type="button" onClick={handleCreateVendor}>Create</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
