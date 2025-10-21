@@ -1,109 +1,89 @@
 'use client';
 
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useEffect, useState, useMemo } from 'react';
-import { format } from 'date-fns';
 import { useRouter, useParams } from 'next/navigation';
-import { Calendar as CalendarIcon, PlusCircle, Trash2 } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Header } from '@/components/header';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
-import type { Vendor, PurchaseOrder, PurchaseOrderLineItem } from '@prisma/client';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Header } from '@/components/header';
 import { useAuth } from '@/contexts/auth-context';
+import { useEffect, useState, useMemo } from 'react';
+import type { Vendor, PurchaseOrder } from '@prisma/client';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { useCompanyProfile } from '@/contexts/company-profile-context';
+import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const lineItemSchema = z.object({
-  id: z.any().optional(),
   description: z.string().min(1, 'Description is required'),
-  quantity: z.coerce.number().min(0.01, 'Must be > 0'),
-  unitPrice: z.coerce.number().min(0, 'Cannot be negative'),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  unitPrice: z.coerce.number().min(0, 'Unit price cannot be negative'),
 });
 
 const poSchema = z.object({
-  orderDate: z.date(),
-  deliveryDate: z.date().optional(),
   vendorId: z.string().min(1, 'Vendor is required'),
   projectName: z.string().min(1, 'Project name is required'),
-  lineItems: z.array(lineItemSchema).min(1, 'At least one item is required'),
+  orderDate: z.date(),
+  deliveryDate: z.date().optional(),
+  lineItems: z.array(lineItemSchema).min(1, 'At least one line item is required'),
   notes: z.string().optional(),
-  status: z.string(),
 });
 
-interface FullPurchaseOrder extends PurchaseOrder {
-    vendor: Vendor;
-    lineItems: PurchaseOrderLineItem[];
-}
+type POFormValues = z.infer<typeof poSchema>;
 
 export default function EditPurchaseOrderPage() {
   const router = useRouter();
   const params = useParams();
-  const { toast } = useToast();
   const { firebaseUser } = useAuth();
   const { state: companyProfile } = useCompanyProfile();
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [po, setPo] = useState<FullPurchaseOrder | null>(null);
-  const poId = params.id as string;
+  const [purchaseOrder, setPurchaseOrder] = useState<PurchaseOrder | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const form = useForm<z.infer<typeof poSchema>>({
+  const id = params.id as string;
+
+  const form = useForm<POFormValues>({
     resolver: zodResolver(poSchema),
     defaultValues: {
       orderDate: new Date(),
-      vendorId: '',
-      projectName: '',
-      lineItems: [],
+      lineItems: [{ description: '', quantity: 1, unitPrice: 0 }],
       notes: '',
-      status: 'Draft',
     },
   });
 
   useEffect(() => {
-    if (!firebaseUser) return;
-    const token = firebaseUser.getIdToken();
-
-    const fetchVendors = async () => {
-      try {
-        const response = await fetch('/api/vendors', { headers: { Authorization: `Bearer ${await token}` } });
-        if (!response.ok) throw new Error('Failed to fetch vendors');
-        setVendors(await response.json());
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch vendors.' });
-      }
-    };
-
     const fetchPurchaseOrder = async () => {
-      try {
-        const response = await fetch(`/api/purchase-orders/${poId}`, { headers: { Authorization: `Bearer ${await token}` } });
-        if (!response.ok) throw new Error('Failed to fetch purchase order');
-        const data: FullPurchaseOrder = await response.json();
-        setPo(data);
+      if (!firebaseUser || !id) return;
+
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch(`/api/purchase-orders/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPurchaseOrder(data);
         form.reset({
           ...data,
+          vendorId: String(data.vendorId),
           orderDate: new Date(data.orderDate),
           deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : undefined,
-          vendorId: String(data.vendorId),
         });
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch purchase order data.' });
+      } else {
+        console.error('Failed to fetch purchase order');
       }
+      setLoading(false);
     };
 
-    fetchVendors();
-    if (poId) {
-      fetchPurchaseOrder();
-    }
-  }, [poId, toast, form.reset, firebaseUser]);
+    fetchPurchaseOrder();
+  }, [firebaseUser, id, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -115,41 +95,64 @@ export default function EditPurchaseOrderPage() {
   const { subtotal, tax, total } = useMemo(() => {
     const subtotal = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
     const tax = subtotal * 0.10; // 10% tax
-    const grandTotal = subtotal + tax;
-    return { subtotal, tax, total: grandTotal };
+    const total = subtotal + tax;
+    return { subtotal, tax, total };
   }, [watchedItems]);
 
-  const handleSubmit = async (values: z.infer<typeof poSchema>) => {
-    if (!firebaseUser) return;
-    const token = await firebaseUser.getIdToken();
-    try {
-      const response = await fetch(`/api/purchase-orders/${poId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(values),
+  useEffect(() => {
+    const fetchVendors = async () => {
+      if (!firebaseUser) return;
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch('/api/vendors', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+      if (response.ok) {
+        const data = await response.json();
+        setVendors(data);
+      }
+    };
+    fetchVendors();
+  }, [firebaseUser]);
 
-      if (!response.ok) throw new Error('Failed to update purchase order');
+  const onSubmit = async (data: POFormValues) => {
+    if (!firebaseUser || !purchaseOrder) return;
+    const token = await firebaseUser.getIdToken();
 
-      const updatedPurchaseOrder = await response.json();
-      toast({ title: 'Purchase Order Updated', description: `PO ${updatedPurchaseOrder.poNumber} has been updated.` });
-      router.push(`/purchase-order/${updatedPurchaseOrder.id}`);
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error Updating PO', description: 'Could not update the purchase order.' });
+    const body = {
+      ...data,
+      poNumber: purchaseOrder.poNumber,
+    };
+
+    const response = await fetch(`/api/purchase-orders/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (response.ok) {
+      router.push(`/purchase-order/${id}`);
+    } else {
+      // Handle error
+      console.error('Failed to update purchase order');
     }
   };
 
-  if (!po) return <div>Loading...</div>;
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   return (
     <div className="flex flex-1 flex-col">
-      <Header title={`Edit Purchase Order #${po.poNumber}`} />
+      <Header title="Edit Purchase Order" />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
-        <div className="flex justify-end sticky top-[57px] sm:top-0 z-10 py-2 bg-background no-print">
-          <Button type="submit" form="po-form">Save Changes</Button>
-        </div>
         <Form {...form}>
-          <form id="po-form" onSubmit={form.handleSubmit(handleSubmit)}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            
             <div className="p-8 border rounded-lg">
                 <div className="flex justify-between items-start mb-8">
                     <div>
@@ -201,43 +204,23 @@ export default function EditPurchaseOrderPage() {
                         <div className="grid grid-cols-2 md:grid-cols-2 gap-2 text-sm">
                             <FormLabel className="font-semibold md:text-right">Order Date:</FormLabel>
                             <FormField control={form.control} name="orderDate" render={({ field }) => (
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent>
-                                </Popover>
+                                <FormItem>
+                                    <FormControl>
+                                    <DatePicker date={field.value} setDate={field.onChange} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
                             )} />
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-2 gap-2 text-sm">
                             <FormLabel className="font-semibold md:text-right">Delivery Date:</FormLabel>
                             <FormField control={form.control} name="deliveryDate" render={({ field }) => (
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent>
-                                </Popover>
-                            )} />
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-2 gap-2 text-sm">
-                            <FormLabel className="font-semibold md:text-right">Status:</FormLabel>
-                            <FormField control={form.control} name="status" render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Draft">Draft</SelectItem>
-                                        <SelectItem value="Sent">Sent</SelectItem>
-                                        <SelectItem value="Approved">Approved</SelectItem>
-                                        <SelectItem value="Fulfilled">Fulfilled</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <FormItem>
+                                    <FormControl>
+                                    <DatePicker date={field.value} setDate={field.onChange} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
                             )} />
                         </div>
                     </div>
@@ -256,7 +239,7 @@ export default function EditPurchaseOrderPage() {
                     </TableHeader>
                     <TableBody>
                         {fields.map((field, index) => (
-                        <TableRow key={index}>
+                        <TableRow key={field.id}>
                             <TableCell>
                             <FormField control={form.control} name={`lineItems.${index}.description`} render={({ field }) => <Input placeholder="Item description" {...field} />} />
                             </TableCell>
@@ -279,7 +262,7 @@ export default function EditPurchaseOrderPage() {
                     </TableBody>
                     </Table>
                     <div className="mt-4 no-print">
-                    <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, unitPrice: 0, total: 0 })}>
+                    <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, unitPrice: 0 })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
                     </div>
@@ -290,7 +273,7 @@ export default function EditPurchaseOrderPage() {
                         <FormField control={form.control} name="notes" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Notes / Terms</FormLabel>
-                                <FormControl><Textarea {...field} /></FormControl>
+                                <FormControl><Textarea {...field} value={field.value ?? ''} /></FormControl>
                             </FormItem>
                         )} />
                     </div>
@@ -302,6 +285,8 @@ export default function EditPurchaseOrderPage() {
                     </div>
                 </section>
             </div>
+
+            <Button type="submit">Update Purchase Order</Button>
           </form>
         </Form>
       </main>

@@ -1,46 +1,27 @@
-const PO_SEQUENCE_KEY = 'docupro_po_sequence';
+import db from '@/lib/prisma';
 
-type PoSequence = {
-  lastNumber: number;
-  year: number;
-};
+export async function getNextPoNumber(companyName: string): Promise<string> {
+    const companyInitials = companyName.substring(0, 3).toUpperCase();
+    const year = new Date().getFullYear();
+    const sequenceId = `po_${companyInitials}_${year}`;
 
-function getSequence(): PoSequence {
-  try {
-    const stored = localStorage.getItem(PO_SEQUENCE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      const currentYear = new Date().getFullYear();
-      if (parsed.year === currentYear) {
-        return parsed;
-      }
-    }
-  } catch (error) {
-    console.error('Failed to read PO sequence from localStorage', error);
-  }
-  // Return default if not found or year has changed
-  return { lastNumber: 0, year: new Date().getFullYear() };
-}
+    const result = await db.$transaction(async (prisma) => {
+        let sequence = await prisma.sequence.findUnique({ where: { id: sequenceId } });
 
-function saveSequence(sequence: PoSequence) {
-  try {
-    localStorage.setItem(PO_SEQUENCE_KEY, JSON.stringify(sequence));
-  } catch (error) {
-    console.error('Failed to save PO sequence to localStorage', error);
-  }
-}
+        if (!sequence) {
+            sequence = await prisma.sequence.create({
+                data: { id: sequenceId, value: 1 },
+            });
+        } else {
+            sequence = await prisma.sequence.update({
+                where: { id: sequenceId },
+                data: { value: { increment: 1 } },
+            });
+        }
 
-export function getNextPoNumber(increment: boolean = false): string {
-  const sequence = getSequence();
-  let nextNumber = sequence.lastNumber + 1;
-  
-  if (increment) {
-     const newSequence = { ...sequence, lastNumber: nextNumber };
-     saveSequence(newSequence);
-  }
+        return sequence.value;
+    });
 
-  const year = sequence.year;
-  const paddedNumber = String(nextNumber).padStart(4, '0');
-
-  return `PO-BSL-${year}-${paddedNumber}`;
+    const paddedNumber = String(result).padStart(4, '0');
+    return `PO-${companyInitials}-${year}-${paddedNumber}`;
 }

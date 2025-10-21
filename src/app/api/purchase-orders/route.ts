@@ -1,110 +1,109 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import admin from '@/lib/firebase-admin';
-import { headers } from 'next/headers';
+import { z } from 'zod';
+import db from '@/lib/prisma';
+import { adminAuth } from '@/lib/firebase-admin';
+import { getNextPoNumber } from '@/lib/po-sequence';
 
-const prisma = new PrismaClient();
+const lineItemSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  quantity: z.coerce.number().min(0.01, 'Must be > 0'),
+  unitPrice: z.coerce.number().min(0, 'Cannot be negative'),
+});
 
-export const dynamic = 'force-dynamic';
+const poSchema = z.object({
+  vendorId: z.string().min(1, 'Please select a vendor'),
+  projectName: z.string().min(1, 'Project name is required'),
+  orderDate: z.coerce.date(),
+  deliveryDate: z.coerce.date().optional(),
+  lineItems: z.array(lineItemSchema).min(1, 'At least one item is required'),
+  notes: z.string().optional(),
+});
 
-export async function GET() {
-  const headersList = await headers();
-  const authHeader = headersList.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const idToken = authHeader.split('Bearer ')[1];
-  if (!idToken) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    await admin.auth().verifyIdToken(idToken);
-  } catch (error) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    const purchaseOrders = await prisma.purchaseOrder.findMany({
-      include: {
-        vendor: true,
-      },
-    });
-    return NextResponse.json(purchaseOrders);
-  } catch (error) {
-    console.error('Error fetching purchase orders:', error);
-    return NextResponse.json({ error: 'Failed to fetch purchase orders' }, { status: 500 });
-  }
+async function verifyToken(request: Request) {
+    const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) {
+        return null;
+    }
+    try {
+        return await adminAuth.verifyIdToken(idToken);
+    } catch (error) {
+        console.error('Token verification failed', error);
+        return null;
+    }
 }
 
-export async function POST(req: Request) {
-  const headersList = await headers();
-  const authHeader = headersList.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const idToken = authHeader.split('Bearer ')[1];
-  if (!idToken) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    await admin.auth().verifyIdToken(idToken);
-  } catch (error) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    const body = await req.json();
-    const {
-      vendorId,
-      orderDate,
-      deliveryDate,
-      lineItems,
-      notes,
-    } = body;
-
-    if (!vendorId || !orderDate || !lineItems || !lineItems.length) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+export async function GET(request: Request) {
+    const decodedToken = await verifyToken(request);
+    if (!decodedToken) {
+        return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const subtotal = lineItems.reduce((acc: number, item: any) => acc + item.total, 0);
-    const tax = subtotal * 0.1; // Assuming a 10% tax rate
-    const total = subtotal + tax;
+    try {
+        const purchaseOrders = await db.purchaseOrder.findMany({
+            include: {
+                vendor: true,
+            },
+            orderBy: {
+                orderDate: 'desc',
+            },
+        });
+        return NextResponse.json(purchaseOrders);
+    } catch (error) {
+        console.error('[API_PO_GET_ALL]', error);
+        return new NextResponse('Internal Server Error', { status: 500 });
+    }
+}
 
-    const poNumber = `PO-${Date.now()}`;
+export async function POST(request: Request) {
+    const decodedToken = await verifyToken(request);
+    if (!decodedToken) {
+        return new NextResponse('Unauthorized', { status: 401 });
+    }
 
-    const newPurchaseOrder = await prisma.purchaseOrder.create({
-      data: {
-        poNumber,
-        status: 'Draft',
-        orderDate: new Date(orderDate),
-        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-        subtotal,
-        tax,
-        total,
-        notes,
-        vendorId,
-        lineItems: {
-          create: lineItems.map((item: any) => ({
-            description: item.description,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            total: item.total,
-          })),
-        },
-      },
-      include: {
-        lineItems: true,
-        vendor: true,
-      },
-    });
+    try {
+        const body = await request.json();
+        const { lineItems, ...poData } = poSchema.parse(body);
 
-    return NextResponse.json(newPurchaseOrder, { status: 201 });
-  } catch (error) {
-    console.error('Error creating purchase order:', error);
-    return NextResponse.json({ error: 'Failed to create purchase order' }, { status: 500 });
-  }
+        const subtotal = lineItems.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+        const tax = subtotal * 0.1; // 10% tax
+        const total = subtotal + tax;
+
+        const companyProfile = await db.companyProfile.findFirst();
+        if (!companyProfile) {
+            return new NextResponse('Company profile not found', { status: 404 });
+        }
+        const poNumber = await getNextPoNumber(companyProfile.name);
+
+
+        const newPurchaseOrder = await db.purchaseOrder.create({
+            data: {
+                ...poData,
+                poNumber,
+                vendorId: parseInt(poData.vendorId, 10),
+                subtotal,
+                tax,
+                total,
+                lineItems: {
+                    create: lineItems.map(item => ({
+                        description: item.description,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                        total: item.quantity * item.unitPrice,
+                    })),
+                },
+            },
+            include: {
+                lineItems: true,
+                vendor: true,
+            },
+        });
+
+        return NextResponse.json(newPurchaseOrder, { status: 201 });
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return NextResponse.json({ error: error.issues }, { status: 400 });
+        }
+        console.error('[API_PO_POST]', error);
+        return new NextResponse('Internal Server Error', { status: 500 });
+    }
 }

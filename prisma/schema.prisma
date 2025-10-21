@@ -100,6 +100,7 @@ model PaymentReceipt {
 model PurchaseOrder {
   id              Int                      @id @default(autoincrement())
   poNumber        String                   @unique
+  projectName     String                   @default("")
   status          String                   @default("Draft") // e.g., Draft, Sent, Approved, Fulfilled
   orderDate       DateTime
   deliveryDate    DateTime?
@@ -230,4 +231,9 @@ model BankAccount {
   companyProfileId Int
 
   @@map("bank_accounts")
+}
+
+model Sequence {
+  id    String @id
+  value Int
 }
