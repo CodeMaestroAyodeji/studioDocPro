@@ -9,6 +9,7 @@ const lineItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(0.01, 'Must be > 0'),
   unitPrice: z.coerce.number().min(0, 'Cannot be negative'),
+  taxable: z.boolean().optional(),
 });
 
 const poSchema = z.object({
@@ -41,8 +42,7 @@ export async function GET(request: Request, context: { params: { id: string } })
     }
 
     try {
-        // const id = context.params.id;
-        const { id } = await context.params;
+         const { id } = await context.params;
         const po = await db.purchaseOrder.findUnique({
             where: { id: parseInt(id, 10) },
             include: {
@@ -70,13 +70,17 @@ export async function PUT(request: Request, context: { params: { id: string } })
 
     try {
         // const id = context.params.id;
-        const { id } = await context.params;
+         const { id } = await context.params;
         const body = await request.json();
         const { lineItems, ...poData } = poSchema.parse(body);
 
         const subtotal = lineItems.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
-        const tax = subtotal * 0.1; // 10% tax
-        const total = subtotal + tax;
+        const taxableSubtotal = lineItems
+            .filter(item => item.taxable)
+            .reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+        
+        const tax = taxableSubtotal / 21; // 5% withholding tax on gross amount
+        const total = subtotal - tax;
 
         await db.purchaseOrderLineItem.deleteMany({
             where: { purchaseOrderId: parseInt(id, 10) },
@@ -96,6 +100,7 @@ export async function PUT(request: Request, context: { params: { id: string } })
                         quantity: item.quantity,
                         unitPrice: item.unitPrice,
                         total: item.quantity * item.unitPrice,
+                        taxable: item.taxable ?? false,
                     })),
                 },
             },

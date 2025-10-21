@@ -17,7 +17,7 @@ import { formatCurrency } from '@/lib/utils';
 // Define the type for the purchase order with relations
 type PurchaseOrderDetails = PurchaseOrder & {
   vendor: Vendor;
-  lineItems: PurchaseOrderLineItem[];
+  lineItems: (PurchaseOrderLineItem & { taxable: boolean })[];
 };
 
 export default function PurchaseOrderDetailPage() {
@@ -132,7 +132,7 @@ export default function PurchaseOrderDetailPage() {
               <div className="flex justify-end">
                 <div className="w-1/3 text-right">
                   <p><strong>Subtotal:</strong> {formatCurrency(purchaseOrder.subtotal)}</p>
-                  <p><strong>Tax (10%):</strong> {formatCurrency(purchaseOrder.tax)}</p>
+                  <p><strong>Tax (-5%):</strong> {formatCurrency(purchaseOrder.tax)}</p>
                   <p className="font-bold"><strong>Total:</strong> {formatCurrency(purchaseOrder.total)}</p>
                 </div>
               </div>
@@ -218,7 +218,7 @@ export default function PurchaseOrderDetailPage() {
               <div className="flex justify-end">
                 <div className="w-1/3 text-right">
                   <p><strong>Subtotal:</strong> {formatCurrency(purchaseOrder.subtotal)}</p>
-                  <p><strong>Tax (10%):</strong> {formatCurrency(purchaseOrder.tax)}</p>
+                  <p><strong>Tax (-5%):</strong> {formatCurrency(purchaseOrder.tax)}</p>
                   <p className="font-bold"><strong>Total:</strong> {formatCurrency(purchaseOrder.total)}</p>
                 </div>
               </div>

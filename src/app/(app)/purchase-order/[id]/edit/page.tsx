@@ -23,12 +23,14 @@ import type { Vendor, PurchaseOrder, PurchaseOrderLineItem } from '@prisma/clien
 import { useAuth } from '@/contexts/auth-context';
 import { useCompanyProfile } from '@/contexts/company-profile-context';
 import { formatCurrency } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const lineItemSchema = z.object({
   id: z.any().optional(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(0.01, 'Must be > 0'),
   unitPrice: z.coerce.number().min(0, 'Cannot be negative'),
+  taxable: z.boolean().optional(),
 });
 
 const poSchema = z.object({
@@ -43,7 +45,7 @@ const poSchema = z.object({
 
 interface FullPurchaseOrder extends PurchaseOrder {
     vendor: Vendor;
-    lineItems: PurchaseOrderLineItem[];
+    lineItems: (PurchaseOrderLineItem & { taxable?: boolean })[];
 }
 
 export default function EditPurchaseOrderPage() {
@@ -55,6 +57,7 @@ export default function EditPurchaseOrderPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [po, setPo] = useState<FullPurchaseOrder | null>(null);
   const poId = params.id as string;
+  const [originalUnitPrices, setOriginalUnitPrices] = useState<{ [key: number]: number }>({});
 
   const form = useForm<z.infer<typeof poSchema>>({
     resolver: zodResolver(poSchema),
@@ -67,6 +70,22 @@ export default function EditPurchaseOrderPage() {
       status: 'Draft',
     },
   });
+
+  const handleTaxableChange = (index: number, checked: boolean) => {
+    const currentUnitPrice = form.getValues(`lineItems.${index}.unitPrice`);
+    if (checked) {
+        setOriginalUnitPrices(prev => ({ ...prev, [index]: currentUnitPrice }));
+        form.setValue(`lineItems.${index}.unitPrice`, currentUnitPrice * 1.05);
+    } else {
+        const originalPrice = originalUnitPrices[index];
+        if (originalPrice !== undefined) {
+            form.setValue(`lineItems.${index}.unitPrice`, originalPrice);
+            const newOriginalPrices = { ...originalUnitPrices };
+            delete newOriginalPrices[index];
+            setOriginalUnitPrices(newOriginalPrices);
+        }
+    }
+  };
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -93,6 +112,9 @@ export default function EditPurchaseOrderPage() {
           orderDate: new Date(data.orderDate),
           deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : undefined,
           vendorId: String(data.vendorId),
+          projectName: data.projectName || '',
+          notes: data.notes || '',
+          lineItems: data.lineItems.map(item => ({ ...item, taxable: false }))
         });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch purchase order data.' });
@@ -113,11 +135,16 @@ export default function EditPurchaseOrderPage() {
   const watchedItems = useWatch({ control: form.control, name: 'lineItems' });
 
   const { subtotal, tax, total } = useMemo(() => {
-    const subtotal = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
-    const tax = subtotal * 0.10; // 10% tax
-    const grandTotal = subtotal + tax;
-    return { subtotal, tax, total: grandTotal };
-  }, [watchedItems]);
+    const total = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
+
+    const subtotal = watchedItems.reduce((acc, item, index) => {
+        const price = originalUnitPrices[index] !== undefined ? originalUnitPrices[index] : item.unitPrice || 0;
+        return acc + (item.quantity || 0) * price;
+    }, 0);
+
+    const tax = total - subtotal;
+    return { subtotal, tax, total };
+  }, [watchedItems, originalUnitPrices]);
 
   const handleSubmit = async (values: z.infer<typeof poSchema>) => {
     if (!firebaseUser) return;
@@ -126,7 +153,10 @@ export default function EditPurchaseOrderPage() {
       const response = await fetch(`/api/purchase-orders/${poId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+            ...values,
+            lineItems: values.lineItems.map(({ taxable, ...item }) => item)
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to update purchase order');
@@ -251,6 +281,7 @@ export default function EditPurchaseOrderPage() {
                         <TableHead className="text-right">Quantity</TableHead>
                         <TableHead className="text-right">Unit Price</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Tax (5%)</TableHead>
                         <TableHead className="no-print"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -269,6 +300,23 @@ export default function EditPurchaseOrderPage() {
                             <TableCell className="text-right font-medium">
                             {formatCurrency((watchedItems[index]?.quantity || 0) * (watchedItems[index]?.unitPrice || 0))}
                             </TableCell>
+                            <TableCell>
+                              <FormField
+                                control={form.control}
+                                name={`lineItems.${index}.taxable`}
+                                render={({ field }) => (
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={(checked) => {
+                                        field.onChange(checked);
+                                        handleTaxableChange(index, !!checked);
+                                      }}
+                                    />
+                                  </FormControl>
+                                )}
+                              />
+                            </TableCell>
                             <TableCell className="no-print">
                             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -279,7 +327,7 @@ export default function EditPurchaseOrderPage() {
                     </TableBody>
                     </Table>
                     <div className="mt-4 no-print">
-                    <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, unitPrice: 0, total: 0 })}>
+                    <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, unitPrice: 0, taxable: false })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
                     </div>
@@ -296,7 +344,7 @@ export default function EditPurchaseOrderPage() {
                     </div>
                     <div className="space-y-2">
                         <div className="flex justify-between items-center"><span className="text-muted-foreground">Subtotal:</span> <span className="font-medium">{formatCurrency(subtotal)}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-muted-foreground">Tax (10%):</span> <span className="font-medium">{formatCurrency(tax)}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-muted-foreground">Tax (5%):</span> <span className="font-medium">{formatCurrency(tax)}</span></div>
                         <hr/>
                         <div className="flex justify-between items-center text-lg font-bold text-primary"><span >Total:</span> <span>{formatCurrency(total)}</span></div>
                     </div>

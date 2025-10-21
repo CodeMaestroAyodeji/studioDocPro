@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
@@ -18,11 +17,14 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import { useCompanyProfile } from '@/contexts/company-profile-context';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const lineItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
   unitPrice: z.coerce.number().min(0, 'Unit price cannot be negative'),
+  taxable: z.boolean().optional(),
 });
 
 const poSchema = z.object({
@@ -41,12 +43,17 @@ export default function NewPurchaseOrderPage() {
   const { firebaseUser } = useAuth();
   const { state: companyProfile } = useCompanyProfile();
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [originalUnitPrices, setOriginalUnitPrices] = useState<{ [key: number]: number }>({});
 
   const form = useForm<POFormValues>({
     resolver: zodResolver(poSchema),
     defaultValues: {
+      vendorId: '',
+      projectName: '',
       orderDate: new Date(),
-      lineItems: [{ description: '', quantity: 1, unitPrice: 0 }],
+      deliveryDate: undefined,
+      lineItems: [{ description: '', quantity: 1, unitPrice: 0, taxable: false }],
+      notes: '',
     },
   });
 
@@ -57,12 +64,33 @@ export default function NewPurchaseOrderPage() {
 
   const watchedItems = useWatch({ control: form.control, name: 'lineItems' });
 
+  const handleTaxableChange = (index: number, checked: boolean) => {
+    const currentUnitPrice = form.getValues(`lineItems.${index}.unitPrice`);
+    if (checked) {
+        setOriginalUnitPrices(prev => ({ ...prev, [index]: currentUnitPrice }));
+        form.setValue(`lineItems.${index}.unitPrice`, currentUnitPrice * 1.05);
+    } else {
+        const originalPrice = originalUnitPrices[index];
+        if (originalPrice !== undefined) {
+            form.setValue(`lineItems.${index}.unitPrice`, originalPrice);
+            const newOriginalPrices = { ...originalUnitPrices };
+            delete newOriginalPrices[index];
+            setOriginalUnitPrices(newOriginalPrices);
+        }
+    }
+  };
+
   const { subtotal, tax, total } = useMemo(() => {
-    const subtotal = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
-    const tax = subtotal * 0.10; // 10% tax
-    const total = subtotal + tax;
+    const total = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
+
+    const subtotal = watchedItems.reduce((acc, item, index) => {
+        const price = originalUnitPrices[index] !== undefined ? originalUnitPrices[index] : item.unitPrice || 0;
+        return acc + (item.quantity || 0) * price;
+    }, 0);
+
+    const tax = total - subtotal;
     return { subtotal, tax, total };
-  }, [watchedItems]);
+  }, [watchedItems, originalUnitPrices]);
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -191,6 +219,7 @@ export default function NewPurchaseOrderPage() {
                         <TableHead className="text-right">Quantity</TableHead>
                         <TableHead className="text-right">Unit Price</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Tax (5%)</TableHead>
                         <TableHead className="no-print"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -209,6 +238,23 @@ export default function NewPurchaseOrderPage() {
                             <TableCell className="text-right font-medium">
                             {formatCurrency((watchedItems[index]?.quantity || 0) * (watchedItems[index]?.unitPrice || 0))}
                             </TableCell>
+                            <TableCell>
+                              <FormField
+                                control={form.control}
+                                name={`lineItems.${index}.taxable`}
+                                render={({ field }) => (
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={(checked) => {
+                                        field.onChange(checked);
+                                        handleTaxableChange(index, !!checked);
+                                      }}
+                                    />
+                                  </FormControl>
+                                )}
+                              />
+                            </TableCell>
                             <TableCell className="no-print">
                             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -219,7 +265,7 @@ export default function NewPurchaseOrderPage() {
                     </TableBody>
                     </Table>
                     <div className="mt-4 no-print">
-                    <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, unitPrice: 0 })}>
+                    <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, unitPrice: 0, taxable: false })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
                     </div>
@@ -236,7 +282,7 @@ export default function NewPurchaseOrderPage() {
                     </div>
                     <div className="space-y-2">
                         <div className="flex justify-between items-center"><span className="text-muted-foreground">Subtotal:</span> <span className="font-medium">{formatCurrency(subtotal)}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-muted-foreground">Tax (10%):</span> <span className="font-medium">{formatCurrency(tax)}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-muted-foreground">Tax (-5%):</span> <span className="font-medium">{formatCurrency(tax)}</span></div>
                         <hr/>
                         <div className="flex justify-between items-center text-lg font-bold text-primary"><span >Total:</span> <span>{formatCurrency(total)}</span></div>
                     </div>

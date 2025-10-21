@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { withAuthorization } from '@/components/with-authorization';
 import { PERMISSIONS } from '@/lib/roles';
 import type { PurchaseOrder, Vendor } from '@prisma/client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 
 interface PurchaseOrderWithVendor extends PurchaseOrder {
@@ -19,10 +19,9 @@ interface PurchaseOrderWithVendor extends PurchaseOrder {
 function PurchaseOrderListPage() {
   const router = useRouter();
   const { firebaseUser } = useAuth();
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderWithVendor[]>([]);
 
   const getPOs = useCallback(async () => {
-    if (!firebaseUser) return;
+    if (!firebaseUser) return [];
 
     const token = await firebaseUser.getIdToken();
     const response = await fetch('/api/purchase-orders', {
@@ -33,15 +32,10 @@ function PurchaseOrderListPage() {
 
     if (!response.ok) {
       console.error("Failed to fetch purchase orders");
-      return;
+      return [];
     }
-    const data = await response.json();
-    setPurchaseOrders(data);
+    return await response.json();
   }, [firebaseUser]);
-
-  useEffect(() => {
-    getPOs();
-  }, [getPOs]);
 
   const columns = [
     { accessor: 'poNumber', header: 'PO #' },
@@ -73,10 +67,12 @@ function PurchaseOrderListPage() {
         </div>
         <DocumentList<PurchaseOrderWithVendor>
             columns={columns}
-            data={purchaseOrders}
+            dataFetcher={getPOs}
             searchFields={searchFields}
             viewUrlPrefix="/purchase-order/"
+            deleteUrlPrefix="/api/purchase-orders/"
             itemIdentifier="id"
+            storageKeyPrefix="purchase-orders"
         />
       </main>
     </div>

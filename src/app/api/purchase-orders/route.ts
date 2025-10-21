@@ -8,6 +8,7 @@ const lineItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(0.01, 'Must be > 0'),
   unitPrice: z.coerce.number().min(0, 'Cannot be negative'),
+  taxable: z.boolean().optional(),
 });
 
 const poSchema = z.object({
@@ -65,8 +66,12 @@ export async function POST(request: Request) {
         const { lineItems, ...poData } = poSchema.parse(body);
 
         const subtotal = lineItems.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
-        const tax = subtotal * 0.1; // 10% tax
-        const total = subtotal + tax;
+        const taxableSubtotal = lineItems
+            .filter(item => item.taxable)
+            .reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+        
+        const tax = taxableSubtotal / 21; // 5% withholding tax on gross amount
+        const total = subtotal - tax;
 
         const companyProfile = await db.companyProfile.findFirst();
         if (!companyProfile) {
@@ -89,6 +94,7 @@ export async function POST(request: Request) {
                         quantity: item.quantity,
                         unitPrice: item.unitPrice,
                         total: item.quantity * item.unitPrice,
+                        taxable: item.taxable ?? false,
                     })),
                 },
             },
