@@ -230,12 +230,12 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
                         const isDeletionDisabled = isDeletableCheck ? isDeletableCheck(docId) : false;
 
                         return (
-                            <TableRow key={docId || index}>
+                            <TableRow key={docId || index} onClick={() => router.push(`${viewUrlPrefix}${getDocId(doc)}`)} className="cursor-pointer">
                                 {columns.map((col) => (
                                 <TableCell key={col.accessor}>{renderCell(doc, col)}</TableCell>
                                 ))}
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => router.push(`${viewUrlPrefix}${getDocId(doc)}`)}>
+                                    <Button variant="ghost" size="icon">
                                         <Eye className="h-4 w-4" />
                                     </Button>
                                     
@@ -254,7 +254,7 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
                                         </Tooltip>
                                     ) : (
                                         <AlertDialog>
-                                            <AlertDialogTrigger asChild>
+                                            <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>

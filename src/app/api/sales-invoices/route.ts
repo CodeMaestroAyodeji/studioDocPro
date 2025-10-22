@@ -18,7 +18,6 @@ const invoiceItemSchema = z.object({
 const invoiceSchema = z.object({
   clientId: z.number(),
   issueDate: z.string().datetime(),
-  dueDate: z.string().datetime(),
   lineItems: z.array(invoiceItemSchema).min(1),
   notes: z.string().optional(),
 });
@@ -70,7 +69,7 @@ export async function POST(req: Request) {
     const data = invoiceSchema.parse(json);
 
     const subtotal = data.lineItems.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
-    const tax = subtotal * 0.10; // 10% VAT - should be configurable in a real app
+    const tax = subtotal * 0.075; // 7.5% VAT - should be configurable in a real app
     const total = subtotal + tax;
 
     const invoiceNumber = await getNextInvoiceNumber();
@@ -80,7 +79,6 @@ export async function POST(req: Request) {
         invoiceNumber,
         clientId: data.clientId,
         issueDate: data.issueDate,
-        dueDate: data.dueDate,
         notes: data.notes,
         subtotal,
         tax,
