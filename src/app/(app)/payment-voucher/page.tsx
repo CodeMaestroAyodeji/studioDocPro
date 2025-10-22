@@ -2,7 +2,6 @@
 
 import { DocumentList } from '@/components/document-list';
 import { Header } from '@/components/header';
-import { PaymentVoucher } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
@@ -10,15 +9,15 @@ import { format } from 'date-fns';
 import { withAuthorization } from '@/components/with-authorization';
 import { PERMISSIONS } from '@/lib/roles';
 import { useAuth } from '@/contexts/auth-context';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import type { PaymentVoucher } from '@prisma/client';
 
 function PaymentVoucherListPage() {
   const router = useRouter();
   const { firebaseUser } = useAuth();
-  const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
 
   const getVouchers = useCallback(async () => {
-    if (!firebaseUser) return;
+    if (!firebaseUser) return [];
 
     const token = await firebaseUser.getIdToken();
     const response = await fetch('/api/payment-vouchers', {
@@ -29,21 +28,16 @@ function PaymentVoucherListPage() {
 
     if (!response.ok) {
       console.error("Failed to fetch payment vouchers");
-      return;
+      return [];
     }
-    const data = await response.json();
-    setVouchers(data);
+    return await response.json();
   }, [firebaseUser]);
-
-  useEffect(() => {
-    getVouchers();
-  }, [getVouchers]);
 
   const columns = [
     { accessor: 'voucherNumber', header: 'Voucher #' },
     { accessor: 'payeeName', header: 'Payee Name' },
     { 
-        accessor: 'date', 
+        accessor: 'paymentDate', 
         header: 'Date',
         cell: (value: string) => format(new Date(value), 'dd/MM/yyyy'),
     },
@@ -54,7 +48,7 @@ function PaymentVoucherListPage() {
     },
   ];
   
-  const searchFields: (keyof PaymentVoucher)[] = [
+  const searchFields = [
   'voucherNumber',
   'payeeName',
   'description',
@@ -71,13 +65,14 @@ function PaymentVoucherListPage() {
                 New Payment Voucher
             </Button>
         </div>
-        <DocumentList
+        <DocumentList<PaymentVoucher>
             columns={columns}
-            data={vouchers}
+            dataFetcher={getVouchers}
             searchFields={searchFields}
             storageKeyPrefix="voucher_"
             viewUrlPrefix="/payment-voucher/"
             deleteUrlPrefix="/api/payment-vouchers/"
+            itemIdentifier="id"
         />
       </main>
     </div>

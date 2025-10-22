@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -23,26 +22,23 @@ import { DocumentPage } from '@/components/document-page';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { AISuggestionButton } from '@/components/ai-suggestion-button';
 import { numberToWords } from '@/lib/number-to-words';
-import type { PaymentVoucher } from '@/lib/types';
+import { useAuth } from '@/contexts/auth-context';
 
 const voucherSchema = z.object({
-  voucherNumber: z.string(),
   payeeName: z.string().min(1, 'Payee name is required'),
   date: z.date(),
   amount: z.coerce.number().positive('Amount must be positive'),
   paymentMethod: z.string().min(1, 'Payment method is required'),
   bankAccountId: z.string().min(1, "Please select a bank account"),
   description: z.string().min(1, "Description is required"),
-  preparedBy: z.string().min(1, "Please select who prepared the voucher"),
-  approvedBy: z.string().min(1, "Please select who approved the voucher"),
+  preparedById: z.string().min(1, "Please select who prepared the voucher"),
+  approvedById: z.string().min(1, "Please select who approved the voucher"),
   payeeBankName: z.string().optional(),
   payeeAccountName: z.string().optional(),
   payeeAccountNumber: z.string().optional(),
+  notes: z.string().optional(),
 });
-
-type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
 
 export default function EditPaymentVoucherPage() {
   const { state: companyProfile } = useCompanyProfile();
@@ -50,13 +46,12 @@ export default function EditPaymentVoucherPage() {
   const router = useRouter();
   const params = useParams();
   const voucherId = params.id as string;
+  const { firebaseUser } = useAuth();
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
-  const [voucher, setVoucher] = useState<PaymentVoucher | null>(null);
   
   const form = useForm<z.infer<typeof voucherSchema>>({
     resolver: zodResolver(voucherSchema),
     defaultValues: {
-      voucherNumber: '',
       payeeName: '',
       date: new Date(),
       amount: 0,
@@ -65,54 +60,76 @@ export default function EditPaymentVoucherPage() {
       payeeBankName: '',
       payeeAccountName: '',
       payeeAccountNumber: '',
+      notes: '',
     },
   });
 
   useEffect(() => {
-    try {
-      const storedVoucher = localStorage.getItem(`voucher_${voucherId}`);
-      if (storedVoucher) {
-        const parsed: StoredPaymentVoucher = JSON.parse(storedVoucher);
-        const voucherData = {
-          ...parsed,
-          date: new Date(parsed.date),
-        };
-        setVoucher(voucherData);
-        form.reset(voucherData);
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Voucher not found',
-        });
-        router.push('/payment-voucher');
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error loading voucher',
-      });
-      router.push('/payment-voucher');
-    }
-  }, [voucherId, router, toast, form]);
+    if (!firebaseUser || !voucherId) return;
+    const tokenPromise = firebaseUser.getIdToken();
 
-
-  const handleSubmit = (values: z.infer<typeof voucherSchema>) => {
-     try {
-        const voucherWithDateAsString = {
-            ...values,
-            date: values.date.toISOString(),
+    const fetchVoucher = async () => {
+        const token = await tokenPromise;
+        try {
+            const response = await fetch(`/api/payment-vouchers/${voucherId}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                form.reset({
+                    ...data,
+                    date: new Date(data.paymentDate),
+                    preparedById: String(data.preparedById),
+                    approvedById: String(data.approvedById),
+                    bankAccountId: String(data.bankAccountId),
+                });
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch voucher data.' });
+            }
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch voucher data.' });
         }
-        localStorage.setItem(`voucher_${values.voucherNumber}`, JSON.stringify(voucherWithDateAsString));
-        toast({
-            title: 'Voucher Updated',
-            description: `Voucher ${values.voucherNumber} has been updated.`,
+    };
+
+    fetchVoucher();
+  }, [voucherId, firebaseUser, form, toast]);
+
+
+  const handleSubmit = async (values: z.infer<typeof voucherSchema>) => {
+     if (!firebaseUser) return;
+     const token = await firebaseUser.getIdToken();
+     try {
+        const response = await fetch(`/api/payment-vouchers/${voucherId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(values),
         });
-        router.push(`/payment-voucher/${values.voucherNumber}`);
+
+        if (response.ok) {
+            const updatedVoucher = await response.json();
+            toast({
+                title: 'Voucher Updated',
+                description: `Voucher ${updatedVoucher.voucherNumber} has been updated.`,
+            });
+            router.push(`/payment-voucher/${updatedVoucher.id}`);
+        } else {
+            const errorData = await response.json();
+            toast({
+                variant: 'destructive',
+                title: 'Error Updating Voucher',
+                description: errorData.error || 'Could not update the voucher.',
+            });
+        }
      } catch (error) {
         toast({
             variant: 'destructive',
-            title: 'Error Saving Voucher',
-            description: 'Could not save the voucher to local storage.',
+            title: 'Error Updating Voucher',
+            description: 'An unexpected error occurred.',
         });
      }
   };
@@ -122,20 +139,9 @@ export default function EditPaymentVoucherPage() {
   const amountInWords = numberToWords(form.watch('amount'));
   const watchedForm = form.watch();
 
-  if (!voucher) {
-    return (
-      <div className="flex flex-1 flex-col">
-        <Header title="Loading Voucher..." />
-        <main className="flex-1 p-6 text-center">
-          <p>Loading voucher for editing...</p>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-1 flex-col">
-      <Header title={`Edit Voucher ${voucher.voucherNumber}`} />
+      <Header title={`Edit Voucher ${watchedForm.voucherNumber}`} />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
         <div className="flex justify-end sticky top-[57px] sm:top-0 z-10 py-2 bg-background no-print gap-2">
             <Button variant="outline" onClick={() => router.push(`/payment-voucher/${voucherId}`)}>Cancel</Button>
@@ -156,7 +162,6 @@ export default function EditPaymentVoucherPage() {
                       className="rounded-md object-contain mb-4"
                     />
                   )}
-                  <p className="text-sm text-muted-foreground">{companyProfile.address}</p>
                 </div>
                 <div className="text-right">
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">PAYMENT VOUCHER</h1>
@@ -286,7 +291,7 @@ export default function EditPaymentVoucherPage() {
               <Separator className="my-8" />
               
               <footer className="grid grid-cols-2 gap-8 pt-8">
-                 <FormField control={form.control} name="preparedBy" render={({ field }) => (
+                 <FormField control={form.control} name="preparedById" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Prepared By</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>
@@ -295,7 +300,7 @@ export default function EditPaymentVoucherPage() {
                                 <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
                             </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
+                            <SelectContent className="no-print">
                                 {companyProfile.signatories.map(s => (
                                     <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
                                 ))}
@@ -304,7 +309,7 @@ export default function EditPaymentVoucherPage() {
                         <FormMessage />
                       </FormItem>
                   )} />
-                 <FormField control={form.control} name="approvedBy" render={({ field }) => (
+                 <FormField control={form.control} name="approvedById" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Approved By</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>
@@ -313,7 +318,7 @@ export default function EditPaymentVoucherPage() {
                                 <SelectValue placeholder={companyProfile.signatories.length === 0 ? "No signatories set up" : "Select signatory"} />
                             </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
+                            <SelectContent className="no-print">
                                 {companyProfile.signatories.map(s => (
                                     <SelectItem key={s.id} value={s.id}>{s.name} - {s.title}</SelectItem>
                                 ))}

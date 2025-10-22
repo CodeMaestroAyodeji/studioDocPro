@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -8,7 +7,7 @@ import * as z from 'zod';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from "lucide-react"
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -23,73 +22,82 @@ import { DocumentPage } from '@/components/document-page';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { getNextVoucherNumber } from '@/lib/voucher-sequence';
 import { numberToWords } from '@/lib/number-to-words';
+import { useAuth } from '@/contexts/auth-context';
 
 const voucherSchema = z.object({
-  voucherNumber: z.string(),
   payeeName: z.string().min(1, 'Payee name is required'),
   date: z.date(),
   amount: z.coerce.number().positive('Amount must be positive'),
   paymentMethod: z.string().min(1, 'Payment method is required'),
   bankAccountId: z.string().min(1, "Please select a bank account"),
   description: z.string().min(1, "Description is required"),
-  preparedBy: z.string().min(1, "Please select who prepared the voucher"),
-  approvedBy: z.string().min(1, "Please select who approved the voucher"),
+  preparedById: z.string().min(1, "Please select who prepared the voucher"),
+  approvedById: z.string().min(1, "Please select who approved the voucher"),
   payeeBankName: z.string().optional(),
   payeeAccountName: z.string().optional(),
   payeeAccountNumber: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export default function NewPaymentVoucherPage() {
   const { state: companyProfile } = useCompanyProfile();
   const { toast } = useToast();
   const router = useRouter();
+  const { firebaseUser } = useAuth();
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
-  const [voucherNumber, setVoucherNumber] = useState('');
   
   const form = useForm<z.infer<typeof voucherSchema>>({
     resolver: zodResolver(voucherSchema),
     defaultValues: {
-      voucherNumber: '',
       payeeName: '',
       date: new Date(),
       amount: 0,
       paymentMethod: 'Bank Transfer',
       bankAccountId: companyProfile.bankAccounts[0]?.id || '',
       description: '',
-      preparedBy: '',
-      approvedBy: '',
+      preparedById: '',
+      approvedById: '',
       payeeBankName: '',
       payeeAccountName: '',
       payeeAccountNumber: '',
+      notes: '',
     },
   });
 
-  useEffect(() => {
-    const nextVoucherNumber = getNextVoucherNumber();
-    setVoucherNumber(nextVoucherNumber);
-    form.setValue('voucherNumber', nextVoucherNumber);
-  }, [form]);
-
-  const handleSubmit = (values: z.infer<typeof voucherSchema>) => {
+  const handleSubmit = async (values: z.infer<typeof voucherSchema>) => {
+     if (!firebaseUser) return;
+     const token = await firebaseUser.getIdToken();
      try {
-        const nextVoucherNumber = getNextVoucherNumber(true);
-        const voucherWithDateAsString = {
-            ...values,
-            date: values.date.toISOString(),
-        }
-        localStorage.setItem(`voucher_${values.voucherNumber}`, JSON.stringify(voucherWithDateAsString));
-        toast({
-            title: 'Voucher Saved',
-            description: `Voucher ${values.voucherNumber} has been saved.`,
+        const response = await fetch('/api/payment-vouchers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(values),
         });
-        router.push(`/payment-voucher/${values.voucherNumber}`);
+
+        if (response.ok) {
+            const newVoucher = await response.json();
+            toast({
+                title: 'Voucher Created',
+                description: `Voucher ${newVoucher.voucherNumber} has been created.`,
+            });
+            router.push(`/payment-voucher/${newVoucher.id}`);
+        } else {
+            const errorData = await response.json();
+            toast({
+                variant: 'destructive',
+                title: 'Error Creating Voucher',
+                description: errorData.error || 'Could not create the voucher.',
+            });
+        }
      } catch (error) {
         toast({
             variant: 'destructive',
-            title: 'Error Saving Voucher',
-            description: 'Could not save the voucher to local storage.',
+            title: 'Error Creating Voucher',
+            description: 'An unexpected error occurred.',
         });
      }
   };
@@ -97,7 +105,6 @@ export default function NewPaymentVoucherPage() {
   const watchedDate = form.watch('date');
   const formattedDate = watchedDate ? format(watchedDate, 'dd/MM/yyyy') : '';
   const amountInWords = numberToWords(form.watch('amount'));
-  const watchedForm = form.watch();
 
   return (
     <div className="flex flex-1 flex-col">
@@ -121,12 +128,11 @@ export default function NewPaymentVoucherPage() {
                       className="rounded-md object-contain mb-4"
                     />
                   )}
-                  <p className="text-sm text-muted-foreground">{companyProfile.address}</p>
                 </div>
                 <div className="text-right">
                   <h1 className="text-4xl font-bold font-headline text-primary mb-2">PAYMENT VOUCHER</h1>
                   <div className="grid grid-cols-2 gap-1 text-sm">
-                    <span className="font-semibold">Voucher #</span><span>{voucherNumber}</span>
+                    <span className="font-semibold">Voucher #</span><span></span>
                     <span className="font-semibold">Voucher Date</span><span>{formattedDate}</span>
                   </div>
                 </div>
@@ -251,7 +257,7 @@ export default function NewPaymentVoucherPage() {
               <Separator className="my-8" />
               
               <footer className="grid grid-cols-2 gap-8 pt-8">
-                 <FormField control={form.control} name="preparedBy" render={({ field }) => (
+                 <FormField control={form.control} name="preparedById" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Prepared By</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>
@@ -269,7 +275,7 @@ export default function NewPaymentVoucherPage() {
                         <FormMessage />
                       </FormItem>
                   )} />
-                 <FormField control={form.control} name="approvedBy" render={({ field }) => (
+                 <FormField control={form.control} name="approvedById" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Approved By</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value} disabled={companyProfile.signatories.length === 0}>

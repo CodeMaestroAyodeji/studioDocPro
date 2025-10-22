@@ -66,17 +66,28 @@ model Client {
 }
 
 model PaymentVoucher {
-  id             Int           @id @default(autoincrement())
-  voucherNumber  String        @unique
-  paymentDate    DateTime
-  amount         Float
-  paymentMethod  String // e.g., Cash, Bank Transfer, Credit Card
-  notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  vendor         Vendor        @relation(fields: [vendorId], references: [id])
-  vendorId       Int
-  salesInvoices  SalesInvoice[]
+  id                 Int      @id @default(autoincrement())
+  voucherNumber      String   @unique
+  paymentDate        DateTime
+  amount             Float
+  paymentMethod      String
+  description        String
+  payeeName          String
+  payeeBankName      String?
+  payeeAccountName   String?
+  payeeAccountNumber String?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  preparedBy   Signatory @relation("PreparedBy", fields: [preparedById], references: [id])
+  preparedById Int
+  approvedBy   Signatory @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedById Int
+  bankAccount  BankAccount @relation(fields: [bankAccountId], references: [id])
+  bankAccountId Int
+
+  salesInvoices SalesInvoice[]
 
   @@map("payment_vouchers")
 }
@@ -140,7 +151,6 @@ model Vendor {
   tin             String?
   logoUrl         String?
   invoiceTemplate String           @default("template-1")
-  paymentVouchers PaymentVoucher[]
   purchaseOrders  PurchaseOrder[]
   vendorInvoices  VendorInvoice[]
   bankAccounts    VendorBankAccount[]
@@ -218,6 +228,8 @@ model Signatory {
   title            String
   companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id])
   companyProfileId Int
+  preparedVouchers PaymentVoucher[] @relation("PreparedBy")
+  approvedVouchers PaymentVoucher[] @relation("ApprovedBy")
 
   @@map("signatories")
 }
@@ -229,6 +241,7 @@ model BankAccount {
   accountNumber    String
   companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id])
   companyProfileId Int
+  paymentVouchers  PaymentVoucher[]
 
   @@map("bank_accounts")
 }

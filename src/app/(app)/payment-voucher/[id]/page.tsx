@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCompanyProfile } from '@/contexts/company-profile-context';
@@ -13,11 +12,16 @@ import { Header } from '@/components/header';
 import { DocumentPage } from '@/components/document-page';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { numberToWords } from '@/lib/number-to-words';
-import type { PaymentVoucher } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-context';
+import type { PaymentVoucher, BankAccount, Signatory } from '@prisma/client';
 
-type StoredPaymentVoucher = Omit<PaymentVoucher, 'date'> & { date: string };
+type PaymentVoucherDetails = PaymentVoucher & {
+    bankAccount: BankAccount;
+    preparedBy: Signatory;
+    approvedBy: Signatory;
+};
 
 const DetailRow = ({ label, value, valueClassName, labelClassName }: { label: string; value: string | undefined | null, valueClassName?: string, labelClassName?: string }) => (
     <div className="grid grid-cols-3 gap-1 py-1">
@@ -32,32 +36,34 @@ export default function PaymentVoucherPreviewPage() {
   const router = useRouter();
   const params = useParams();
   const voucherId = params.id as string;
-  const [voucher, setVoucher] = useState<PaymentVoucher | null>(null);
+  const { firebaseUser } = useAuth();
+  const [voucher, setVoucher] = useState<PaymentVoucherDetails | null>(null);
 
   useEffect(() => {
-    try {
-      const storedVoucher = localStorage.getItem(`voucher_${voucherId}`);
-      if (storedVoucher) {
-        const parsed: StoredPaymentVoucher = JSON.parse(storedVoucher);
-        setVoucher({
-          ...parsed,
-          date: new Date(parsed.date),
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Voucher not found',
-        });
-        router.push('/payment-voucher');
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error loading voucher',
-      });
-      router.push('/payment-voucher');
-    }
-  }, [voucherId, router, toast]);
+    if (!firebaseUser || !voucherId) return;
+    const tokenPromise = firebaseUser.getIdToken();
+
+    const fetchVoucher = async () => {
+        const token = await tokenPromise;
+        try {
+            const response = await fetch(`/api/payment-vouchers/${voucherId}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setVoucher(data);
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch voucher data.' });
+            }
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch voucher data.' });
+        }
+    };
+
+    fetchVoucher();
+  }, [voucherId, firebaseUser, toast]);
 
   const logoPlaceholder = PlaceHolderImages.find((p) => p.id === 'logo');
 
@@ -72,19 +78,16 @@ export default function PaymentVoucherPreviewPage() {
     );
   }
 
-  const formattedDate = format(voucher.date, 'dd/MM/yyyy');
+  const formattedDate = format(new Date(voucher.paymentDate), 'dd/MM/yyyy');
   const amountInWords = numberToWords(voucher.amount);
   const formattedAmount = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(voucher.amount);
-  const fromAccount = companyProfile.bankAccounts.find(b => b.id === voucher.bankAccountId);
-  const preparedBy = companyProfile.signatories.find(s => s.id === voucher.preparedBy);
-  const approvedBy = companyProfile.signatories.find(s => s.id === voucher.approvedBy);
   
   const handlePrint = () => {
     if (!voucher) return;
 
     const originalTitle = document.title;
     const safePayeeName = voucher.payeeName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const formattedDateForFile = format(voucher.date, 'yyyy-MM-dd');
+    const formattedDateForFile = format(new Date(voucher.paymentDate), 'yyyy-MM-dd');
     const newTitle = `${safePayeeName}_${voucher.voucherNumber}_${formattedDateForFile}`;
     
     document.title = newTitle;
@@ -97,6 +100,9 @@ export default function PaymentVoucherPreviewPage() {
       <Header title={`Voucher ${voucher.voucherNumber}`} className="no-print" />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
         <div className="mb-4 flex justify-end gap-2 no-print">
+            <Button variant="outline" onClick={() => router.push('/payment-voucher')}>
+                Back to list
+            </Button>
             <Button variant="outline" onClick={() => router.push(`/payment-voucher/${voucherId}/edit`)}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
@@ -121,7 +127,6 @@ export default function PaymentVoucherPreviewPage() {
                   className="rounded-md object-contain mb-4"
                 />
               )}
-              <p className="text-sm text-muted-foreground">{companyProfile.address}</p>
             </div>
             <div className="text-right">
               <h1 className="text-3xl font-bold font-headline text-primary mb-2 whitespace-nowrap">PAYMENT VOUCHER</h1>
@@ -155,8 +160,11 @@ export default function PaymentVoucherPreviewPage() {
           {/* Payment Details */}
           <div className="grid grid-cols-2 gap-8 mb-12">
             <div className="space-y-2">
+                <p className="font-semibold text-muted-foreground">From Account Details:</p>
                 <DetailRow label="Payment Method" value={voucher.paymentMethod} labelClassName="whitespace-nowrap"/>
-                <DetailRow label="From Account" value={`${fromAccount?.bankName} - ${fromAccount?.accountNumber}`} labelClassName="whitespace-nowrap"/>
+                <DetailRow label="Bank Name" value={voucher.bankAccount.bankName} />
+                <DetailRow label="Account Name" value={voucher.bankAccount.accountName} />
+                <DetailRow label="Account Number" value={voucher.bankAccount.accountNumber} labelClassName="whitespace-nowrap" />
             </div>
              <div className="space-y-2">
                 <p className="font-semibold text-muted-foreground">Payee Bank Details:</p>
@@ -168,18 +176,18 @@ export default function PaymentVoucherPreviewPage() {
 
 
           {/* Footer */}
-          <footer className="grid grid-cols-2 gap-8 pt-4">
+          <footer className="flex justify-between pt-4">
              <div className="text-center">
                 <p className='text-sm mt-2'>Prepared By</p>
                 <div className="h-12"></div>
                 <div className="border-b border-foreground w-1/2 mx-auto"></div>
-                <p className='text-sm font-semibold mt-1'>{preparedBy?.name}</p>
+                <p className='text-sm font-semibold mt-1'>{voucher.preparedBy.name}</p>
              </div>
              <div className="text-center">
                 <p className='text-sm mt-2'>Approved By</p>
                 <div className="h-12"></div>
                 <div className="border-b border-foreground w-1/2 mx-auto"></div>
-                <p className="text-sm font-semibold mt-1">{approvedBy?.name}</p>
+                <p className='text-sm font-semibold mt-1'>{voucher.approvedBy.name}</p>
              </div>
           </footer>
             <div className="text-center text-xs text-muted-foreground pt-12">
