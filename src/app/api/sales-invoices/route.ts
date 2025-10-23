@@ -20,31 +20,10 @@ const invoiceSchema = z.object({
   issueDate: z.string().datetime(),
   lineItems: z.array(invoiceItemSchema).min(1),
   notes: z.string().optional(),
+  discount: z.number().optional(),
 });
 
-async function getNextInvoiceNumber() {
-    const currentYear = new Date().getFullYear();
-    const prefix = `INV-BSL-${currentYear}-`;
-
-    const lastInvoice = await prisma.salesInvoice.findFirst({
-        where: {
-            invoiceNumber: { startsWith: prefix },
-        },
-        orderBy: {
-            invoiceNumber: 'desc',
-        },
-    });
-
-    let nextNumber = 1;
-    if (lastInvoice) {
-        const lastNumberStr = lastInvoice.invoiceNumber.split('-').pop();
-        if (lastNumberStr) {
-            nextNumber = parseInt(lastNumberStr, 10) + 1;
-        }
-    }
-
-    return `${prefix}${String(nextNumber).padStart(4, '0')}`;
-}
+import { getNextSalesInvoiceNumber } from '@/lib/sales-invoice-sequence';
 
 export async function POST(req: Request) {
   const headersList = await headers();
@@ -68,11 +47,16 @@ export async function POST(req: Request) {
     const json = await req.json();
     const data = invoiceSchema.parse(json);
 
-    const subtotal = data.lineItems.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
-    const tax = subtotal * 0.075; // 7.5% VAT - should be configurable in a real app
-    const total = subtotal + tax;
+    const companyProfile = await prisma.companyProfile.findFirst();
+    const taxRate = companyProfile?.taxRate || 0.075;
 
-    const invoiceNumber = await getNextInvoiceNumber();
+    const subtotal = data.lineItems.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
+    const discountAmount = data.discount ? subtotal * (data.discount / 100) : 0;
+    const totalBeforeTax = subtotal - discountAmount;
+    const tax = totalBeforeTax * taxRate;
+    const total = totalBeforeTax + tax;
+
+    const invoiceNumber = await getNextSalesInvoiceNumber();
 
     const newInvoice = await prisma.salesInvoice.create({
       data: {
@@ -80,6 +64,7 @@ export async function POST(req: Request) {
         clientId: data.clientId,
         issueDate: data.issueDate,
         notes: data.notes,
+        discount: data.discount,
         subtotal,
         tax,
         total,

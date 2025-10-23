@@ -124,7 +124,6 @@ function SalesInvoiceListPage() {
             searchFields={searchFields}
             storageKeyPrefix="sales-invoices"
             viewUrlPrefix="/sales-invoice/"
-            deleteUrlPrefix="/api/sales-invoices/"
             itemIdentifier="id"
           />
         )}

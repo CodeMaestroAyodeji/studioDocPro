@@ -38,6 +38,7 @@ const profileSchema = z.object({
   phone: z.string().min(1, 'Phone number is required'),
   website: z.string().url('Invalid URL').optional().or(z.literal('')),
   logoUrl: z.string().url('Logo is required').min(1, 'Logo is required'),
+  taxRate: z.number().optional(),
   signatories: z.array(signatorySchema),
   bankAccounts: z.array(bankAccountSchema),
 });
@@ -54,6 +55,7 @@ export default function ProfilePage() {
       ...state,
       tin: state.tin || '',
       website: state.website || '',
+      taxRate: state.taxRate || 0,
     },
   });
 
@@ -72,6 +74,7 @@ export default function ProfilePage() {
       ...state,
       tin: state.tin || '',
       website: state.website || '',
+      taxRate: state.taxRate || 0,
     });
   }, [state, form]);
 
@@ -169,6 +172,9 @@ export default function ProfilePage() {
                   )} />
                    <FormField control={form.control} name="tin" render={({ field }) => (
                     <FormItem><FormLabel>TIN</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="taxRate" render={({ field }) => (
+                    <FormItem><FormLabel>Tax Rate (%)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.valueAsNumber / 100)} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="email" render={({ field }) => (
                     <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>

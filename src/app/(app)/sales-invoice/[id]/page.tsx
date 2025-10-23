@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { SalesInvoice, InvoiceLineItem, Client } from "@prisma/client";
 import { numberToWords } from "@/lib/number-to-words";
+import { toast } from "sonner";
 
 type InvoiceDetails = SalesInvoice & {
   client: Client;
@@ -35,6 +36,7 @@ export default function SalesInvoiceDetailPage() {
   const id = params.id;
 
   useEffect(() => {
+    let isMounted = true;
     const fetchInvoice = async () => {
       if (!firebaseUser || !id) return;
 
@@ -45,16 +47,22 @@ export default function SalesInvoiceDetailPage() {
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setInvoice(data);
-      } else {
-        console.error("Failed to fetch invoice");
+      if (isMounted) {
+        if (response.ok) {
+          const data = await response.json();
+          setInvoice(data);
+        } else if (response.status !== 404) {
+          console.error("Failed to fetch invoice");
+        }
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchInvoice();
+
+    return () => {
+      isMounted = false;
+    };
   }, [firebaseUser, id]);
 
   if (loading) {
@@ -80,12 +88,7 @@ export default function SalesInvoiceDetailPage() {
   const discountRaw = invoice.discount ?? 0;
   const subtotal = Number(invoice.subtotal ?? 0);
 
-  const discountAmount =
-    discountRaw === 0
-      ? 0
-      : discountRaw > 0 && discountRaw <= 1
-      ? subtotal * discountRaw // percentage
-      : discountRaw; // absolute
+  const discountAmount = subtotal * (discountRaw / 100);
 
   // Tax: assume stored invoice.tax is the computed tax or compute from subtotal after discount
   // If invoice.tax exists/ >0 use it; otherwise calculate 7.5% on (subtotal - discountAmount) if addVat true.
@@ -128,12 +131,30 @@ export default function SalesInvoiceDetailPage() {
     ) ||
     companyProfile?.signatories?.[1] ||
     null;
+  const handleDelete = async () => {
+    if (!firebaseUser || !id) return;
+
+    const token = await firebaseUser.getIdToken();
+    const response = await fetch(`/api/sales-invoices/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      toast.success("Invoice deleted successfully");
+      router.push("/sales-invoice");
+    } else {
+      toast.error("Failed to delete invoice");
+    }
+  };
 
   return (
     <div className="flex flex-1 flex-col">
       <Header title={`Invoice ${invoice.invoiceNumber}`} />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 no-print">
           <Button
             variant="outline"
             onClick={() => router.push("/sales-invoice")}
@@ -145,6 +166,9 @@ export default function SalesInvoiceDetailPage() {
             onClick={() => router.push(`/sales-invoice/${id}/edit`)}
           >
             Edit
+          </Button>
+          <Button variant="destructive" onClick={handleDelete}>
+            Delete
           </Button>
           <Button variant="outline" onClick={() => window.print()}>
             Print
@@ -239,15 +263,24 @@ export default function SalesInvoiceDetailPage() {
                 {discountAmount > 0 && (
                   <div className="flex justify-between">
                     <span className="font-medium text-muted-foreground">
-                      Discounts
+                      Discount ({invoice.discount}%)
                     </span>
                     <span className="text-red-600">-{fmt.format(discountAmount)}</span>
                   </div>
                 )}
 
+                <div className="flex justify-between">
+                    <span className="font-medium text-muted-foreground">
+                        Total before Tax
+                    </span>
+                    <span>{fmt.format(taxableBase)}</span>
+                </div>
+
                 {tax > 0 && (
                   <div className="flex justify-between">
-                    <span className="font-medium text-muted-foreground">Tax</span>
+                    <span className="font-medium text-muted-foreground">
+                      Add VAT (7.5%)
+                    </span>
                     <span>{fmt.format(tax)}</span>
                   </div>
                 )}
@@ -345,7 +378,7 @@ export default function SalesInvoiceDetailPage() {
                 </div>
 
                 {/* Company footer for print */}
-                <div className="text-center text-xs text-muted-foreground pt-8">
+                <div className="text-center text-xs text-muted-foreground pt-8 no-print">
                   <p className="font-bold text-sm text-foreground">
                     {companyProfile.name}
                   </p>

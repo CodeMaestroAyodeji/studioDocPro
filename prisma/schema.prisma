@@ -219,6 +219,7 @@ model CompanyProfile {
   phone        String
   website      String?
   logoUrl      String
+  taxRate      Float?        @default(0.075)
   signatories  Signatory[]
   bankAccounts BankAccount[]
   createdAt    DateTime      @default(now())

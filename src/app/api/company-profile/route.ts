@@ -25,6 +25,7 @@ const profileSchema = z.object({
   phone: z.string().min(1, 'Phone number is required'),
   website: z.string().url('Invalid URL').optional().or(z.literal('')),
   logoUrl: z.string().url('Logo is required').min(1, 'Logo is required'),
+  taxRate: z.number().optional(),
   signatories: z.array(signatorySchema),
   bankAccounts: z.array(bankAccountSchema),
 });

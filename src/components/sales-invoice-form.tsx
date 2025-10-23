@@ -272,7 +272,7 @@ export function SalesInvoiceForm({ initialValues, onSubmit, isEditing = false }:
                   </FormItem>
                 )}
               />
-              <div className="flex justify-between"><span>Discount Amt</span><span>{discountAmount.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>Total before Tax</span><span>{(subtotal - discountAmount).toFixed(2)}</span></div>
               <FormField
                 control={form.control}
                 name="addVat"
