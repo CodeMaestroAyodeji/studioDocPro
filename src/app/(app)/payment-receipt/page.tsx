@@ -1,3 +1,4 @@
+// src/app/(app)/payment-receipt/page.tsx
 
 'use client';
 

@@ -22,17 +22,41 @@ import { FormControl } from "@/components/ui/form"
 
 type ComboboxProps = {
     options: { label: string; value: string }[];
-    value: string;
-    onChange: (value: string) => void;
+    value: string | string[] | number[];
+    onChange: (value: string | string[] | number[]) => void;
     placeholder?: string;
     searchPlaceholder?: string;
     emptyMessage?: string;
     onCreate?: (value: string) => void;
+    multiple?: boolean;
+    disabled?: boolean;
 }
 
-export function Combobox({ options, value, onChange, placeholder, searchPlaceholder, emptyMessage, onCreate }: ComboboxProps) {
+export function Combobox({ options, value, onChange, placeholder, searchPlaceholder, emptyMessage, onCreate, multiple, disabled }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState('')
+
+  const handleSelect = (currentValue: string) => {
+    if (multiple && Array.isArray(value)) {
+      const newValues = value.includes(parseInt(currentValue, 10) as never)
+        ? (value as number[]).filter((v) => v !== parseInt(currentValue, 10))
+        : [...value, parseInt(currentValue, 10)];
+      onChange(newValues);
+    } else {
+      onChange(currentValue === value ? "" : currentValue);
+      setOpen(false);
+    }
+  };
+
+  const displayValue = () => {
+    if (multiple && Array.isArray(value) && value.length > 0) {
+      return value.map((v) => options.find((o) => o.value === v.toString())?.label).join(", ");
+    }
+    if (!multiple && typeof value === 'string' && value) {
+      return options.find((option) => option.value === value)?.label;
+    }
+    return placeholder || "Select option...";
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -43,10 +67,9 @@ export function Combobox({ options, value, onChange, placeholder, searchPlacehol
             role="combobox"
             aria-expanded={open}
             className={cn("w-full justify-between font-normal", !value && "text-muted-foreground")}
+            disabled={disabled}
             >
-            {value
-                ? options.find((option) => option.value === value)?.label
-                : placeholder || "Select option..."}
+            {displayValue()}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
         </FormControl>
@@ -75,15 +98,12 @@ export function Combobox({ options, value, onChange, placeholder, searchPlacehol
               <CommandItem
                 key={option.value}
                 value={option.value}
-                onSelect={(currentValue) => {
-                  onChange(currentValue === value ? "" : currentValue)
-                  setOpen(false)
-                }}
+                onSelect={handleSelect}
               >
                 <Check
                   className={cn(
                     "mr-2 h-4 w-4",
-                    value === option.value ? "opacity-100" : "opacity-0"
+                    multiple && Array.isArray(value) && value.includes(parseInt(option.value, 10) as never) ? "opacity-100" : "opacity-0"
                   )}
                 />
                 {option.label}

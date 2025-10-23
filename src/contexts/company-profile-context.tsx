@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useReducer } from 'react';
-import type { CompanyProfile, Signatory, BankAccount } from '@/lib/types';
+import { useAuth } from '@/contexts/auth-context';
 
 type State = CompanyProfile;
 
@@ -76,11 +76,18 @@ function companyProfileReducer(state: State, action: Action): State {
 
 export function CompanyProfileProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(companyProfileReducer, initialState);
+  const { firebaseUser } = useAuth();
 
   useEffect(() => {
     const fetchProfile = async () => {
+      if (!firebaseUser) return;
       try {
-        const response = await fetch('/api/company-profile');
+        const token = await firebaseUser.getIdToken();
+        const response = await fetch('/api/company-profile', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         if (response.ok) {
           const profile = await response.json();
           dispatch({ type: 'SET_PROFILE', payload: profile });
@@ -91,7 +98,7 @@ export function CompanyProfileProvider({ children }: { children: ReactNode }) {
     };
 
     fetchProfile();
-  }, []);
+  }, [firebaseUser]);
 
   return (
     <CompanyProfileContext.Provider value={{ state, dispatch }}>
