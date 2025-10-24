@@ -33,6 +33,7 @@ type DocumentListProps<T extends { id?: string; date?: Date }> = {
   enableDateFilter?: boolean;
   isDeletableCheck?: (itemId: string) => boolean;
   deleteDisabledMessage?: string;
+  itemKey?: (item: T) => string;
 };
 
 const getNestedValue = (obj: any, path: string) => {
@@ -51,6 +52,7 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
   enableDateFilter = true,
   isDeletableCheck,
   deleteDisabledMessage = "This item cannot be deleted.",
+  itemKey,
 }: DocumentListProps<T>) {
   const router = useRouter();
   const { toast } = useToast();
@@ -230,7 +232,7 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
                         const isDeletionDisabled = isDeletableCheck ? isDeletableCheck(docId) : false;
 
                         return (
-                            <TableRow key={docId || index} onClick={() => router.push(`${viewUrlPrefix}${getDocId(doc)}`)} className="cursor-pointer">
+                            <TableRow key={itemKey ? itemKey(doc) : (docId || index)} onClick={() => router.push(`${viewUrlPrefix}${getDocId(doc)}`)} className="cursor-pointer">
                                 {columns.map((col) => (
                                 <TableCell key={col.accessor}>{renderCell(doc, col)}</TableCell>
                                 ))}

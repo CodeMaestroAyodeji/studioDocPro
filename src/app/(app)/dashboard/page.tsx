@@ -1,277 +1,251 @@
+// @refresh reset
 "use client";
-
-import { useEffect, useState } from "react";
-import { Header } from "@/components/header";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { DocumentList } from "@/components/document-list";
 import { StatsCard } from "@/components/stats-card";
 import {
-  DollarSign, // Revenue
-  Banknote, // Expenditure
-  FileText, // Sales Invoices
-  Users, // Users & Vendors
-  ShoppingBag, // Purchase Orders
-  Receipt, // Payment Vouchers
-  ShieldCheck, // Tax
-  HandCoins, // Payment Receipts
-  FileClock, // Receivables (Unpaid)
-  FileWarning, // Payables (Pending)
-  FileSpreadsheet, // Vendor Invoices
+  ArrowDownRight,
+  ArrowUpRight,
+  FileText,
+  LayoutGrid,
+  PlusCircle,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import Link from "next/link";
 
-export default function DashboardPage() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const DashboardPage = () => {
   const { firebaseUser } = useAuth();
+  const [totalSales, setTotalSales] = useState(0);
+  const [totalPurchases, setTotalPurchases] = useState(0);
+  const [totalPayments, setTotalPayments] = useState(0);
+  const [netBalance, setNetBalance] = useState(0);
+  const [financialSummary, setFinancialSummary] = useState([]);
 
-  const fetchData = async () => {
-    if (!firebaseUser) return;
+  const documentListColumns = [
+    { accessor: 'docType', header: 'Type' },
+    { accessor: 'docId', header: 'Doc No.' },
+    { accessor: 'date', header: 'Date' },
+    { accessor: 'customerVendor', header: 'Customer/Vendor' },
+    { accessor: 'amount', header: 'Amount' },
+    { accessor: 'status', header: 'Status' },
+  ];
 
-    try {
-      setError(null);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (firebaseUser) {
+        const token = await firebaseUser.getIdToken();
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const [dashboardRes, financialSummaryRes] = await Promise.all([
+          fetch('/api/dashboard', { headers }),
+          fetch('/api/dashboard/financial-summary', { headers }),
+        ]);
+
+        const dashboardData = await dashboardRes.json();
+        setTotalSales(dashboardData.company.revenues.total);
+        setTotalPurchases(dashboardData.company.orders.total);
+        setTotalPayments(dashboardData.company.moneyReceived.total);
+        setNetBalance(
+          dashboardData.company.revenues.total -
+            dashboardData.company.orders.total
+        );
+
+        const financialSummaryData = await financialSummaryRes.json();
+        setFinancialSummary(financialSummaryData);
+      }
+    };
+
+    fetchData();
+  }, [firebaseUser]);
+
+  const fetchRecentDocuments = async (docType: string) => {
+    if (firebaseUser) {
       const token = await firebaseUser.getIdToken();
-      const res = await fetch("/api/dashboard", {
+      const response = await fetch(`/api/${docType}`,
+      {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
-      if (!res.ok) {
-        throw new Error(`API request failed with status ${res.status}`);
-      }
-
-      const json = await res.json();
-      
-      if (json.error) {
-        throw new Error(json.error);
-      }
-      
-      setData(json);
-    } catch (err: any) {
-      console.error("Dashboard fetch error:", err);
-      setError(err.message || "Failed to fetch data.");
-    } finally {
-      setLoading(false);
+      const data = await response.json();
+      return data.map((doc: any) => ({ 
+        ...doc, 
+        docType: docType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        docId: doc.invoiceNumber || doc.poNumber || doc.voucherNumber || doc.receiptNumber,
+        customerVendor: doc.client?.name || doc.vendor?.name,
+      }));
     }
+    return [];
   };
 
-  useEffect(() => {
-    if (firebaseUser) {
-      fetchData();
-      const interval = setInterval(fetchData, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [firebaseUser]);
-
-  const formatNaira = (value: any) =>
-    `₦${typeof value === "number" ? value.toLocaleString("en-NG") : "0"}`;
-
-  // Get user's first name
-  const userName = firebaseUser?.displayName?.split(' ')[0] || firebaseUser?.email || "User";
-
-  if (loading) {
-    return (
-      <div className="flex flex-1 flex-col h-screen">
-        <Header
-          title="Dashboard Overview"
-          description="Loading your summary..."
-        />
-        {/* Centered Loading State */}
-        <main className="flex-1 p-8 text-center text-muted-foreground flex items-center justify-center">
-          <p>Loading dashboard data...</p>
-        </main>
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="flex flex-1 flex-col h-screen">
-        <Header
-          title="Dashboard Overview"
-          description="Real-time business summary"
-        />
-        {/* Centered Error State */}
-        <main className="flex-1 p-8 text-center text-destructive flex items-center justify-center">
-          <div>
-            <p className="font-semibold">Failed to load dashboard data.</p>
-            <p className="text-sm">{error}</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <Header
-        title={`Welcome back, ${userName}!`}
-        description="Here's your real-time business summary."
-      />
-      {/* Subtle background color and padding for the main content area */}
-      <main className="flex-1 p-6 sm:px-8 space-y-8 bg-gray-50/50 dark:bg-muted/20 pb-12">
-        
-        {/* Section 1: Financial Summary */}
-        <section>
-          <h2 className="text-2xl font-bold tracking-tight mb-4">Financial Summary</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatsCard
-              title="Total Revenue"
-              value={formatNaira(data.revenue)}
-              description="All sales invoices (Billed)"
-              icon={DollarSign}
-            />
-            <StatsCard
-              title="Total Expenditure"
-              value={formatNaira(data.expenditure)}
-              description="All payments (Paid Out)"
-              icon={Banknote}
-            />
-            {data.totalOrders !== undefined && (
-              <StatsCard
-                title="Total Orders"
-                value={formatNaira(data.totalOrders)} // ✅ FIX: Was formatNfSaira
-                description="All purchase orders"
-                icon={ShoppingBag}
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Total Sales"
+          value={`${totalSales.toLocaleString()}`}
+          icon={ArrowUpRight}
+          description="Total amount from sales invoices"
+        />
+        <StatsCard
+          title="Total Purchases"
+          value={`${totalPurchases.toLocaleString()}`}
+          icon={ArrowDownRight}
+          description="Total amount from purchase orders"
+        />
+        <StatsCard
+          title="Total Payments"
+          value={`${totalPayments.toLocaleString()}`}
+          icon={DollarSign}
+          description="Total amount from payment receipts"
+        />
+        <StatsCard
+          title="Net Balance"
+          value={`${netBalance.toLocaleString()}`}
+          icon={LayoutGrid}
+          description="Sales minus Purchases"
+        />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Financial Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={financialSummary}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="income" fill="#8884d8" name="Income" />
+                <Bar dataKey="expenses" fill="#82ca9d" name="Expenses" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <Link href="/sales-invoice/new">
+              <Button className="w-full">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Sales Invoice
+              </Button>
+            </Link>
+            <Link href="/purchase-order/new">
+              <Button className="w-full">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Purchase Order
+              </Button>
+            </Link>
+            <Link href="/payment-receipt/new">
+              <Button className="w-full">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Payment Receipt
+              </Button>
+            </Link>
+            <Link href="/vendor-invoice/new">
+              <Button className="w-full">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Vendor Invoice
+              </Button>
+            </Link>
+            <Link href="/payment-voucher/new">
+              <Button className="w-full">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Payment Voucher
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activities</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="all">
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="sales">Sales</TabsTrigger>
+              <TabsTrigger value="purchases">Purchases</TabsTrigger>
+              <TabsTrigger value="payments">Payments</TabsTrigger>
+            </TabsList>
+            <TabsContent value="all">
+              <DocumentList 
+                columns={documentListColumns} 
+                dataFetcher={() => Promise.all([
+                  fetchRecentDocuments('sales-invoices'), 
+                  fetchRecentDocuments('purchase-orders'), 
+                  fetchRecentDocuments('payment-receipts'),
+                  fetchRecentDocuments('payment-vouchers'),
+                  fetchRecentDocuments('vendor-invoices'),
+                ]).then(results => results.flat())} 
+                searchFields={['docType', 'docId', 'customerVendor']} 
+                storageKeyPrefix="dashboard-all" 
+                viewUrlPrefix="/" 
+                itemKey={(doc: any) => `${doc.docType}-${doc.id}`}
               />
-            )}
-            {data.totalMoneyReceived !== undefined && (
-              <StatsCard
-                title="Total Money Received"
-                value={formatNaira(data.totalMoneyReceived)}
-                description="From all payment receipts"
-                icon={HandCoins}
+            </TabsContent>
+            <TabsContent value="sales">
+              <DocumentList
+                columns={documentListColumns}
+                dataFetcher={() => fetchRecentDocuments('sales-invoices')}
+                searchFields={['docType', 'docId', 'customerVendor']}
+                storageKeyPrefix="dashboard-sales"
+                viewUrlPrefix="/sales-invoice/"
               />
-            )}
-          </div>
-        </section>
-
-        {/* New Layout Wrapper for side-by-side sections on large screens */}
-        <div className="grid grid-cols-12 gap-8">
-          
-          {/* Section 2: Cash Flow Status (Re-ordered) */}
-          <section className="col-span-12 lg:col-span-5">
-            <h2 className="text-2xl font-bold tracking-tight mb-4">Cash Flow Status</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {data.receivables !== undefined && (
-                <StatsCard
-                  title="Receivables"
-                  value={data.receivables.toString()}
-                  description="Unpaid invoices"
-                  icon={FileClock}
-                />
-              )}
-              {data.payables !== undefined && (
-                <StatsCard
-                  title="Payables"
-                  value={data.payables.toString()}
-                  description="Pending vendor payments"
-                  icon={FileWarning}
-                />
-              )}
-            </div>
-          </section>
-
-          {/* Section 3: Tax & Compliance (Re-ordered) */}
-          {data.taxCompliance && (
-            <section className="col-span-12 lg:col-span-7">
-              <h2 className="text-2xl font-bold tracking-tight mb-4">Tax & Compliance</h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {data.taxCompliance.withholdingTaxPO !== undefined && (
-                  <StatsCard
-                    title="WHT from Purchase Order"
-                    value={formatNaira(data.taxCompliance.withholdingTaxPO)}
-                    description="From purchase orders"
-                    icon={ShoppingBag}
-                  />
-                )}
-                {data.taxCompliance.vendorTax !== undefined && (
-                  <StatsCard
-                    title="Taxes given to Vendors"
-                    value={formatNaira(data.taxCompliance.vendorTax)}
-                    description="From vendor invoices"
-                    icon={FileSpreadsheet}
-                  />
-                )}
-                {data.taxCompliance.clientTax !== undefined && (
-                  <StatsCard
-                    title="Tax (Sales)"
-                    value={formatNaira(data.taxCompliance.clientTax)}
-                    description="Collected from sales invoices"
-                    icon={ShieldCheck}
-                  />
-                )}
-              </div>
-            </section>
-          )}
-        </div>
-
-        {/* Section 4: General Overview */}
-        {data.overview && (
-          <section>
-            <h2 className="text-2xl font-bold tracking-tight mb-4">General Overview</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {data.overview.purchaseOrders !== undefined && (
-                <StatsCard
-                  title="Purchase Orders"
-                  value={data.overview.purchaseOrders.toString()}
-                  description="All purchase orders"
-                  icon={ShoppingBag}
-                />
-              )}
-              {data.overview.paymentVouchers !== undefined && (
-                <StatsCard
-                  title="Payment Vouchers"
-                  value={data.overview.paymentVouchers.toString()}
-                  description="All payment vouchers"
-                  icon={Receipt}
-                />
-              )}
-              {data.overview.paymentReceipts !== undefined && (
-                <StatsCard
-                  title="Payment Receipts"
-                  value={data.overview.paymentReceipts.toString()}
-                  description="All payment receipts"
-                  icon={HandCoins}
-                />
-              )}
-              {data.overview.salesInvoices !== undefined && (
-                <StatsCard
-                  title="Sales Invoices"
-                  value={data.overview.salesInvoices.toString()}
-                  description="All sales invoices"
-                  icon={FileText}
-                />
-              )}
-              {data.overview.vendorInvoices !== undefined && (
-                <StatsCard
-                  title="Vendor Invoices"
-                  value={data.overview.vendorInvoices.toString()}
-                  description="All vendor invoices"
-                  icon={FileSpreadsheet}
-                />
-              )}
-              {data.overview.vendors !== undefined && (
-                <StatsCard
-                  title="Vendors"
-                  value={data.overview.vendors.toString()}
-                  description="All registered vendors"
-                  icon={Users}
-                />
-              )}
-              {data.overview.users !== undefined && (
-                <StatsCard
-                  title="Users"
-                  value={data.overview.users.toString()}
-                  description="Total registered users"
-                  icon={Users}
-                />
-              )}
-            </div>
-          </section>
-        )}
-        
-      </main>
+            </TabsContent>
+            <TabsContent value="purchases">
+              <DocumentList
+                columns={documentListColumns}
+                dataFetcher={() => fetchRecentDocuments('purchase-orders')}
+                searchFields={['docType', 'docId', 'customerVendor']}
+                storageKeyPrefix="dashboard-purchases"
+                viewUrlPrefix="/purchase-order/"
+              />
+            </TabsContent>
+            <TabsContent value="payments">
+              <DocumentList
+                columns={documentListColumns}
+                dataFetcher={() => Promise.all([
+                  fetchRecentDocuments('payment-receipts'),
+                  fetchRecentDocuments('payment-vouchers'),
+                ]).then(results => results.flat())}
+                searchFields={['docType', 'docId', 'customerVendor']}
+                storageKeyPrefix="dashboard-payments"
+                viewUrlPrefix="/"
+                itemKey={(doc: any) => `${doc.docType}-${doc.id}`}
+              />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
+
+export default DashboardPage;
