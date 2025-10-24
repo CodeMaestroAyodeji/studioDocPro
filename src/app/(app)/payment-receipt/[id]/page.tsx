@@ -247,7 +247,7 @@ export default function PaymentReceiptPreviewPage() {
   <div className="w-1/2 text-center flex flex-col justify-end">
     {/* ✅ THIS LINE IS FIXED */}
     <div className="border-b-2 border-foreground w-2/3 mx-auto mb-2"></div>
-    <h2 className="text-sm font-semibold">{issuedBy?.name ?? ''}</h2>
+    <p className="text-sm font-semibold">{issuedBy?.name ?? ''}</p>
     <p className="text-xs text-muted-foreground">For: Bauweise Services Limited</p>
   </div>
 </footer>
