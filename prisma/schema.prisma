@@ -21,7 +21,6 @@ model User {
 model SalesInvoice {
   id              Int               @id @default(autoincrement())
   invoiceNumber   String            @unique
-  status          String            @default("Draft") // e.g., Draft, Sent, Paid, Void
   issueDate       DateTime
   dueDate         DateTime?
   subtotal        Float
@@ -122,7 +121,6 @@ model PurchaseOrder {
   id           Int                     @id @default(autoincrement())
   poNumber     String                  @unique
   projectName  String                  @default("")
-  status       String                  @default("Draft") // e.g., Draft, Sent, Approved, Fulfilled
   orderDate    DateTime
   deliveryDate DateTime?
   subtotal     Float
@@ -185,7 +183,6 @@ model VendorInvoice {
   id            Int                 @id @default(autoincrement())
   invoiceNumber String              @unique
   projectName   String
-  status        String              @default("Draft") // e.g., Draft, Sent, Paid, Void
   invoiceDate   DateTime
   dueDate       DateTime
   subtotal      Float

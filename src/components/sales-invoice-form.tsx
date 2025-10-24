@@ -41,7 +41,6 @@ export const invoiceSchema = z.object({
   preparedById: z.string().optional(),
   approvedById: z.string().optional(),
   bankAccountId: z.string().optional(),
-  status: z.string().optional(),
 });
 
 export type InvoiceFormValues = z.infer<typeof invoiceSchema>;

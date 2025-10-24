@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
+import { formatCurrency } from "@/lib/utils";
 
 const DashboardPage = () => {
   const { firebaseUser } = useAuth();
@@ -41,8 +42,11 @@ const DashboardPage = () => {
     { accessor: 'docId', header: 'Doc No.' },
     { accessor: 'date', header: 'Date' },
     { accessor: 'customerVendor', header: 'Customer/Vendor' },
-    { accessor: 'amount', header: 'Amount' },
-    { accessor: 'status', header: 'Status' },
+    { 
+      accessor: 'amount', 
+      header: 'Amount', 
+      cell: (amount: number) => formatCurrency(amount) 
+    },
   ];
 
   useEffect(() => {
@@ -88,6 +92,7 @@ const DashboardPage = () => {
         docType: docType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
         docId: doc.invoiceNumber || doc.poNumber || doc.voucherNumber || doc.receiptNumber,
         customerVendor: doc.client?.name || doc.vendor?.name,
+        amount: doc.total || doc.amount,
       }));
     }
     return [];
@@ -102,25 +107,25 @@ const DashboardPage = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Sales"
-          value={`${totalSales.toLocaleString()}`}
+          value={formatCurrency(totalSales)}
           icon={ArrowUpRight}
           description="Total amount from sales invoices"
         />
         <StatsCard
           title="Total Purchases"
-          value={`${totalPurchases.toLocaleString()}`}
+          value={formatCurrency(totalPurchases)}
           icon={ArrowDownRight}
           description="Total amount from purchase orders"
         />
         <StatsCard
           title="Total Payments"
-          value={`${totalPayments.toLocaleString()}`}
+          value={formatCurrency(totalPayments)}
           icon={DollarSign}
           description="Total amount from payment receipts"
         />
         <StatsCard
           title="Net Balance"
-          value={`${netBalance.toLocaleString()}`}
+          value={formatCurrency(netBalance)}
           icon={LayoutGrid}
           description="Sales minus Purchases"
         />
@@ -135,8 +140,8 @@ const DashboardPage = () => {
               <BarChart data={financialSummary}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
+                <YAxis tickFormatter={(value) => formatCurrency(value as number)} />
+                <Tooltip formatter={(value) => formatCurrency(value as number)} />
                 <Legend />
                 <Bar dataKey="income" fill="#8884d8" name="Income" />
                 <Bar dataKey="expenses" fill="#82ca9d" name="Expenses" />

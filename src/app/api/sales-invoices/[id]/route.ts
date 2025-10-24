@@ -18,7 +18,6 @@ const invoiceSchema = z.object({
   issueDate: z.string().datetime(),
   lineItems: z.array(invoiceItemSchema).min(1),
   notes: z.string().optional(),
-  status: z.string().optional(),
   discount: z.number().optional(),
 });
 
@@ -133,7 +132,6 @@ export async function PATCH(
                     clientId: data.clientId,
                     issueDate: data.issueDate,
                     notes: data.notes,
-                    status: data.status,
                     discount: data.discount,
                     subtotal,
                     tax,

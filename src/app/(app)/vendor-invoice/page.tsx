@@ -5,12 +5,12 @@ import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
-import { format } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 import { withAuthorization } from '@/components/with-authorization';
 import { PERMISSIONS } from '@/lib/roles';
 import { useAuth } from '@/contexts/auth-context';
 import { VendorInvoice, Vendor } from '@prisma/client';
+import { vendorInvoiceColumns } from '@/lib/columns';
 
 interface VendorInvoiceWithVendor extends VendorInvoice {
   vendor: Vendor;
@@ -43,26 +43,9 @@ function VendorInvoiceListPage() {
     getVendorInvoices();
   }, [getVendorInvoices]);
 
-  const columns = [
-    { accessor: 'invoiceNumber', header: 'Invoice #' },
-    { 
-      accessor: 'vendor.name', 
-      header: 'Vendor',
-    },
-    { 
-        accessor: 'invoiceDate', 
-        header: 'Date',
-        cell: (value: string) => format(new Date(value), 'dd/MM/yyyy'),
-    },
-    { 
-        accessor: 'total', 
-        header: 'Amount',
-        cell: (value: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value || 0),
-    },
-    { accessor: 'status', header: 'Status' },
-  ];
+  const columns = vendorInvoiceColumns;
   
-  const searchFields = ['invoiceNumber', 'status', 'vendor.name'];
+  const searchFields = ['invoiceNumber', 'vendor.name'];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -80,6 +63,7 @@ function VendorInvoiceListPage() {
             searchFields={searchFields}
             storageKeyPrefix="vendor_invoice_"
             viewUrlPrefix="/vendor-invoice/"
+            deleteUrlPrefix="/api/vendor-invoices/"
             itemIdentifier="id"
         />
       </main>

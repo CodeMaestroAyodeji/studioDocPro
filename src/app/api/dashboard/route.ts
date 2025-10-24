@@ -46,8 +46,6 @@ export async function GET() {
       paymentVoucherCount, paymentVoucherSum,
       purchaseOrderCount, purchaseOrderSum,
       paymentReceiptCount, paymentReceiptSum,
-      unpaidSalesInvoiceCount, unpaidSalesInvoiceSum,
-      unpaidVendorInvoiceCount, unpaidVendorInvoiceSum, // For company payables
       // VENDORS Perspective
       vendorInvoiceCount, vendorInvoiceSum,
       vendorPOCount, vendorPOSum, // Count matches company PO count
@@ -63,8 +61,6 @@ export async function GET() {
       prisma.paymentVoucher.count(), prisma.paymentVoucher.aggregate({ _sum: { amount: true } }), // Assuming all vouchers are expenditures
       prisma.purchaseOrder.count(), prisma.purchaseOrder.aggregate({ _sum: { total: true } }),
       prisma.paymentReceipt.count(), prisma.paymentReceipt.aggregate({ _sum: { amount: true } }),
-      prisma.salesInvoice.count({ where: { status: { not: "Paid" } } }), prisma.salesInvoice.aggregate({ where: { status: { not: "Paid" } }, _sum: { total: true } }),
-      prisma.vendorInvoice.count({ where: { status: { not: "Paid" } } }), prisma.vendorInvoice.aggregate({ where: { status: { not: "Paid" } }, _sum: { total: true } }),
       // VENDORS
       prisma.vendorInvoice.count(), prisma.vendorInvoice.aggregate({ _sum: { total: true } }),
       prisma.purchaseOrder.count(), prisma.purchaseOrder.aggregate({ _sum: { total: true } }), // Reuse PO count/sum
@@ -83,8 +79,6 @@ export async function GET() {
         expenditures: { count: paymentVoucherCount, total: safeSum(paymentVoucherSum, 'amount') },
         orders: { count: purchaseOrderCount, total: safeSum(purchaseOrderSum, 'total') },
         moneyReceived: { count: paymentReceiptCount, total: safeSum(paymentReceiptSum, 'amount') },
-        receivables: { count: unpaidSalesInvoiceCount, total: safeSum(unpaidSalesInvoiceSum, 'total') },
-        payables: { count: unpaidVendorInvoiceCount, total: safeSum(unpaidVendorInvoiceSum, 'total') },
         // Simplified overall tax count/sum for company view
         taxes: { 
           count: salesInvoiceCount + vendorInvoiceCount + purchaseOrderCount, // Example count
@@ -97,7 +91,6 @@ export async function GET() {
         // Note: Assuming all payment vouchers are vendor payments for simplicity. Adjust if needed.
         payments: { count: paymentVoucherCount, total: safeSum(paymentVoucherSum, 'amount') }, 
         orders: { count: vendorPOCount, total: safeSum(vendorPOSum, 'total') },
-        payables: { count: unpaidVendorInvoiceCount, total: safeSum(unpaidVendorInvoiceSum, 'total') },
         taxes: { 
           count: vendorInvoiceCount + purchaseOrderCount, // Example count
           total: safeSum(vendorInvoiceTaxSum, 'tax') + safeSum(purchaseOrderTaxSum, 'tax') 

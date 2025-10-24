@@ -11,12 +11,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { formatCurrency, formatDate } from '@/lib/finance-utils';
 import { toast } from 'sonner';
+import { salesInvoiceColumns } from '@/lib/columns';
 
 // Define the type based on the API response
 interface SalesInvoice {
   id: number;
   invoiceNumber: string;
-  status: string;
   issueDate: string;
   total: number;
   client: {
@@ -63,27 +63,9 @@ function SalesInvoiceListPage() {
     getInvoices();
   }, [getInvoices]);
 
-  const columns = [
-    { accessor: 'invoiceNumber', header: 'Invoice #' },
-    {
-      accessor: 'client.name',
-      header: 'Client',
-      cell: (_: any, item: SalesInvoice) => item.client?.name || '-',
-    },
-    {
-      accessor: 'issueDate',
-      header: 'Date',
-      cell: (value: string) => formatDate(value),
-    },
-    {
-      accessor: 'total',
-      header: 'Total (NGN)',
-      cell: (value: number) => formatCurrency(value),
-    },
-    { accessor: 'status', header: 'Status' },
-  ];
+  const columns = salesInvoiceColumns;
 
-  const searchFields: (keyof SalesInvoice)[] = ['invoiceNumber', 'status'];
+  const searchFields: (keyof SalesInvoice)[] = ['invoiceNumber'];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -124,6 +106,7 @@ function SalesInvoiceListPage() {
             searchFields={searchFields}
             storageKeyPrefix="sales-invoices"
             viewUrlPrefix="/sales-invoice/"
+            deleteUrlPrefix="/api/sales-invoices/"
             itemIdentifier="id"
           />
         )}

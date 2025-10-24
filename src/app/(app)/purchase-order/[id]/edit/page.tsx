@@ -41,7 +41,6 @@ const poSchema = z.object({
   projectName: z.string().min(1, 'Project name is required'),
   lineItems: z.array(lineItemSchema).min(1, 'At least one item is required'),
   notes: z.string().optional(),
-  status: z.string(),
 });
 
 interface FullPurchaseOrder extends PurchaseOrder {
@@ -70,7 +69,6 @@ export default function EditPurchaseOrderPage() {
       projectName: '',
       lineItems: [],
       notes: '',
-      status: 'Draft',
     },
   });
 
@@ -283,20 +281,6 @@ export default function EditPurchaseOrderPage() {
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent>
                                 </Popover>
-                            )} />
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-2 gap-2 text-sm">
-                            <FormLabel className="font-semibold md:text-right">Status:</FormLabel>
-                            <FormField control={form.control} name="status" render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Draft">Draft</SelectItem>
-                                        <SelectItem value="Sent">Sent</SelectItem>
-                                        <SelectItem value="Approved">Approved</SelectItem>
-                                        <SelectItem value="Fulfilled">Fulfilled</SelectItem>
-                                    </SelectContent>
-                                </Select>
                             )} />
                         </div>
                     </div>

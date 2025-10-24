@@ -5,12 +5,12 @@ import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
-import { format } from 'date-fns';
 import { withAuthorization } from '@/components/with-authorization';
 import { PERMISSIONS } from '@/lib/roles';
 import type { PurchaseOrder, Vendor } from '@prisma/client';
 import { useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { purchaseOrderColumns } from '@/lib/columns';
 
 interface PurchaseOrderWithVendor extends PurchaseOrder {
   vendor: Vendor;
@@ -37,23 +37,9 @@ function PurchaseOrderListPage() {
     return await response.json();
   }, [firebaseUser]);
 
-  const columns = [
-    { accessor: 'poNumber', header: 'PO #' },
-    {
-      accessor: 'vendor.name',
-      header: 'Vendor',
-      cell: (value: any, item: PurchaseOrderWithVendor) => item.vendor.name
-    },
-    {
-        accessor: 'orderDate',
-        header: 'Date',
-        cell: (value: string) => format(new Date(value), 'dd/MM/yyyy'),
-    },
-    { accessor: 'total', header: 'Total' },
-    { accessor: 'status', header: 'Status' },
-  ];
+  const columns = purchaseOrderColumns;
 
-  const searchFields = ['poNumber', 'status'];
+  const searchFields = ['poNumber'];
 
   return (
     <div className="flex flex-1 flex-col">

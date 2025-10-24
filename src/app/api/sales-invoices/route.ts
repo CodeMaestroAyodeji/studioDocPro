@@ -68,7 +68,6 @@ export async function POST(req: Request) {
         subtotal,
         tax,
         total,
-        status: 'Draft',
         lineItems: {
           create: data.lineItems.map(item => ({ ...item, total: item.quantity * item.unitPrice }))
         },
