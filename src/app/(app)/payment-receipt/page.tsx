@@ -84,6 +84,8 @@ function PaymentReceiptListPage() {
             storageKeyPrefix="receipt_"
             viewUrlPrefix="/payment-receipt/"
             itemIdentifier="id"
+            deleteUrlPrefix="/api/payment-receipts/"
+            dataFetcher={getReceipts}
         />
       </main>
     </div>

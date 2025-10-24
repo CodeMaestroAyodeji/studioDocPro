@@ -256,7 +256,7 @@ export function DocumentList<T extends { id?: string; date?: Date, poNumber?: st
                                         </Tooltip>
                                     ) : (
                                         <AlertDialog>
-                                            <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                            <AlertDialogTrigger asChild onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>

@@ -49,28 +49,6 @@ export default function PaymentReceiptPreviewPage() {
   const [receipt, setReceipt] = useState<AnyReceipt | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const handleDelete = async () => {
-    if (!firebaseUser || !receiptId) return;
-
-    try {
-      const token = await firebaseUser.getIdToken();
-      const response = await fetch(`/api/payment-receipts/${receiptId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        toast({ title: 'Receipt deleted successfully' });
-        router.push('/payment-receipt');
-      } else {
-        toast({ variant: 'destructive', title: 'Failed to delete receipt' });
-      }
-    } catch {
-      toast({ variant: 'destructive', title: 'Network error deleting receipt' });
-    }
-  };
 
   useEffect(() => {
     let isMounted = true;
@@ -157,9 +135,6 @@ export default function PaymentReceiptPreviewPage() {
           <Button variant="outline" onClick={() => router.push('/payment-receipt')}>Back to list</Button>
           <Button variant="outline" onClick={() => router.push(`/payment-receipt/${receiptId}/edit`)}>
             <Pencil className="mr-2 h-4 w-4" />Edit
-          </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            <Trash2 className="mr-2 h-4 w-4" />Delete
           </Button>
           <Button onClick={() => window.print()}>
             <Download className="mr-2 h-4 w-4" />Print or Save PDF
