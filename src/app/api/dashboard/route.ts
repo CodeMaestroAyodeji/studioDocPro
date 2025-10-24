@@ -51,7 +51,8 @@ export async function GET() {
     const [
       totalRevenue,
       totalExpenditure,
-      totalMoneyReceived, // ✅ CHANGED from totalTax
+      totalOrders,
+      totalMoneyReceived, // ✅ ADDED THIS BACK
       receivables,
       payables,
       overviewCounts,
@@ -59,7 +60,8 @@ export async function GET() {
     ] = await Promise.all([
       prisma.salesInvoice.aggregate({ _sum: { total: true } }), // Total Billed
       prisma.paymentVoucher.aggregate({ _sum: { amount: true } }), // Total Paid Out
-      prisma.paymentReceipt.aggregate({ _sum: { amount: true } }), // ✅ Total Cash Received
+      prisma.purchaseOrder.aggregate({ _sum: { total: true } }), // Total of all POs
+      prisma.paymentReceipt.aggregate({ _sum: { amount: true } }), // ✅ ADDED THIS QUERY BACK
       prisma.salesInvoice.count({ where: { status: { not: "Paid" } } }),
       prisma.vendorInvoice.count({ where: { status: { not: "Paid" } } }),
       Promise.all([
@@ -95,7 +97,8 @@ export async function GET() {
     const baseData = {
       revenue: totalRevenue._sum.total || 0,
       expenditure: totalExpenditure._sum.amount || 0,
-      totalMoneyReceived: totalMoneyReceived._sum.amount || 0, // ✅ CHANGED from tax
+      totalOrders: totalOrders._sum.total || 0,
+      totalMoneyReceived: totalMoneyReceived._sum.amount || 0, // ✅ ADDED THIS BACK
       receivables,
       payables,
       overview: {
@@ -111,7 +114,7 @@ export async function GET() {
       taxCompliance: {
         withholdingTaxPO: withholdingTaxPO._sum.tax || 0,
         vendorTax: vendorTax._sum.tax || 0,
-        clientTax: clientTax._sum.tax || 0, // Your sales tax is still here
+        clientTax: clientTax._sum.tax || 0,
       },
     };
 
@@ -129,26 +132,27 @@ export async function GET() {
   }
 }
 
-// This function is correct and remains unchanged
+// This function filters the data based on user role
 function filterDashboardDataByRole(data: any, role: string) {
   const clone = JSON.parse(JSON.stringify(data));
 
   switch (role) {
     case "admin":
-      return clone;
+      return clone; // Admin sees everything
     case "accountant":
-      delete clone.overview.users;
+      delete clone.overview.users; // Accountant sees all except user count
       return clone;
     case "project_manager":
-      delete clone.overview.users;
+      delete clone.overview.users; // PM sees all except user count
       return clone;
     case "viewer":
     default:
+      // Viewer sees only the high-level financial summary and cash flow
       return {
         revenue: clone.revenue,
         expenditure: clone.expenditure,
-        // ✅ ADDED this so viewers can see it too
-        totalMoneyReceived: clone.totalMoneyReceived, 
+        totalOrders: clone.totalOrders,
+        totalMoneyReceived: clone.totalMoneyReceived, // ✅ ADDED THIS BACK
         receivables: clone.receivables,
         payables: clone.payables,
       };

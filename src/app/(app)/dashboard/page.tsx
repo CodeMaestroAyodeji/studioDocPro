@@ -7,7 +7,7 @@ import {
   DollarSign, // Revenue
   Banknote, // Expenditure
   FileText, // Sales Invoices
-  Users, // Users
+  Users, // Users & Vendors
   ShoppingBag, // Purchase Orders
   Receipt, // Payment Vouchers
   ShieldCheck, // Tax
@@ -21,14 +21,14 @@ import { useAuth } from "@/contexts/auth-context";
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null); // State for errors
+  const [error, setError] = useState<string | null>(null);
   const { firebaseUser } = useAuth();
 
   const fetchData = async () => {
     if (!firebaseUser) return;
 
     try {
-      setError(null); // Clear previous errors
+      setError(null);
       const token = await firebaseUser.getIdToken();
       const res = await fetch("/api/dashboard", {
         headers: {
@@ -42,7 +42,6 @@ export default function DashboardPage() {
 
       const json = await res.json();
       
-      // ✅ CHECK FOR API-LEVEL ERRORS
       if (json.error) {
         throw new Error(json.error);
       }
@@ -59,12 +58,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (firebaseUser) {
       fetchData();
-      const interval = setInterval(fetchData, 30000); // refresh every 30s
+      const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
     }
   }, [firebaseUser]);
 
-  // Helper for formatting
   const formatNaira = (value: any) =>
     `₦${typeof value === "number" ? value.toLocaleString("en-NG") : "0"}`;
 
@@ -82,7 +80,6 @@ export default function DashboardPage() {
     );
   }
 
-  // If data fetch fails, show a message
   if (error || !data) {
     return (
       <div className="flex flex-1 flex-col">
@@ -108,35 +105,44 @@ export default function DashboardPage() {
         {/* Section 1: Financial Summary */}
         <section>
           <h2 className="text-xl font-semibold mb-4">Financial Summary</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* These properties should always exist on success */}
+          {/* ✅ UPDATED GRID TO 4 COLUMNS */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatsCard
               title="Total Revenue"
               value={formatNaira(data.revenue)}
-              description="All sales invoices"
+              description="All sales invoices (Billed)"
               icon={DollarSign}
             />
             <StatsCard
               title="Total Expenditure"
               value={formatNaira(data.expenditure)}
-              description="All payments & vendor bills"
+              description="All payments (Paid Out)"
               icon={Banknote}
             />
-            {/* Tax might not exist for "viewer" but formatNaira handles undefined */}
-            <StatsCard
-              title="Tax (Sales)"
-              value={formatNaira(data.tax)}
-              description="Total collected tax"
-              icon={ShieldCheck}
-            />
+            {data.totalOrders !== undefined && (
+              <StatsCard
+                title="Total Orders"
+                value={formatNaira(data.totalOrders)}
+                description="All purchase orders"
+                icon={ShoppingBag}
+              />
+            )}
+            {/* ✅ ADDED THIS CARD */}
+            {data.totalMoneyReceived !== undefined && (
+              <StatsCard
+                title="Total Money Received"
+                value={formatNaira(data.totalMoneyReceived)}
+                description="From all payment receipts"
+                icon={HandCoins}
+              />
+            )}
           </div>
         </section>
 
-        {/* Section 2: Cash Flow */}
+        {/* Section 2: Cash Flow Status */}
         <section>
           <h2 className="text-xl font-semibold mb-4">Cash Flow Status</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* ✅ ADDED SAFETY CHECK */}
             {data.receivables !== undefined && (
               <StatsCard
                 title="Receivables"
@@ -145,7 +151,6 @@ export default function DashboardPage() {
                 icon={FileClock}
               />
             )}
-            {/* ✅ ADDED SAFETY CHECK */}
             {data.payables !== undefined && (
               <StatsCard
                 title="Payables"
@@ -157,46 +162,19 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Section 4: Tax & Compliance */}
-        {data.taxCompliance && (
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Tax & Compliance</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {/* ✅ ADDED SAFETY CHECKS FOR ALL */}
-              {data.taxCompliance.withholdingTaxPO !== undefined && (
-                <StatsCard
-                  title="WHT from Purchase Order"
-                  value={formatNaira(data.taxCompliance.withholdingTaxPO)}
-                  description="From purchase orders"
-                  icon={ShoppingBag}
-                />
-              )}
-              {data.taxCompliance.vendorTax !== undefined && (
-                <StatsCard
-                  title="Taxes given to Vendors"
-                  value={formatNaira(data.taxCompliance.vendorTax)}
-                  description="From vendor invoices"
-                  icon={FileSpreadsheet}
-                />
-              )}
-              {data.taxCompliance.clientTax !== undefined && (
-                <StatsCard
-                  title="Taxes Collected from clients"
-                  value={formatNaira(data.taxCompliance.clientTax)}
-                  description="From sales invoices"
-                  icon={FileText}
-                />
-              )}
-            </div>
-          </section>
-        )}
-
         {/* Section 3: General Overview */}
         {data.overview && (
           <section>
             <h2 className="text-xl font-semibold mb-4">General Overview</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-              {/* ✅ ADDED SAFETY CHECKS FOR ALL */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {data.overview.purchaseOrders !== undefined && (
+                <StatsCard
+                  title="Purchase Orders"
+                  value={data.overview.purchaseOrders.toString()}
+                  description="All purchase orders"
+                  icon={ShoppingBag}
+                />
+              )}
               {data.overview.paymentVouchers !== undefined && (
                 <StatsCard
                   title="Payment Vouchers"
@@ -229,6 +207,14 @@ export default function DashboardPage() {
                   icon={FileSpreadsheet}
                 />
               )}
+              {data.overview.vendors !== undefined && (
+                <StatsCard
+                  title="Vendors"
+                  value={data.overview.vendors.toString()}
+                  description="All registered vendors"
+                  icon={Users}
+                />
+              )}
               {data.overview.users !== undefined && (
                 <StatsCard
                   title="Users"
@@ -241,7 +227,38 @@ export default function DashboardPage() {
           </section>
         )}
 
-        
+        {/* Section 4: Tax & Compliance */}
+        {data.taxCompliance && (
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Tax & Compliance</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {data.taxCompliance.withholdingTaxPO !== undefined && (
+                <StatsCard
+                  title="WHT from Purchase Order"
+                  value={formatNaira(data.taxCompliance.withholdingTaxPO)}
+                  description="From purchase orders"
+                  icon={ShoppingBag}
+                />
+              )}
+              {data.taxCompliance.vendorTax !== undefined && (
+                <StatsCard
+                  title="Taxes given to Vendors"
+                  value={formatNaira(data.taxCompliance.vendorTax)}
+                  description="From vendor invoices"
+                  icon={FileSpreadsheet}
+                />
+              )}
+              {data.taxCompliance.clientTax !== undefined && (
+                <StatsCard
+                  title="Tax (Sales)"
+                  value={formatNaira(data.taxCompliance.clientTax)}
+                  description="Collected from sales invoices"
+                  icon={ShieldCheck}
+                />
+              )}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
