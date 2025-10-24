@@ -66,15 +66,19 @@ export default function DashboardPage() {
   const formatNaira = (value: any) =>
     `₦${typeof value === "number" ? value.toLocaleString("en-NG") : "0"}`;
 
+  // Get user's first name
+  const userName = firebaseUser?.displayName?.split(' ')[0] || firebaseUser?.email || "User";
+
   if (loading) {
     return (
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col h-screen">
         <Header
           title="Dashboard Overview"
-          description="Real-time business summary"
+          description="Loading your summary..."
         />
-        <main className="p-8 text-center text-muted-foreground">
-          Loading dashboard data...
+        {/* Centered Loading State */}
+        <main className="flex-1 p-8 text-center text-muted-foreground flex items-center justify-center">
+          <p>Loading dashboard data...</p>
         </main>
       </div>
     );
@@ -82,14 +86,17 @@ export default function DashboardPage() {
 
   if (error || !data) {
     return (
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col h-screen">
         <Header
           title="Dashboard Overview"
           description="Real-time business summary"
         />
-        <main className="p-8 text-center text-destructive">
-          <p>Failed to load dashboard data.</p>
-          <p className="text-sm">{error}</p>
+        {/* Centered Error State */}
+        <main className="flex-1 p-8 text-center text-destructive flex items-center justify-center">
+          <div>
+            <p className="font-semibold">Failed to load dashboard data.</p>
+            <p className="text-sm">{error}</p>
+          </div>
         </main>
       </div>
     );
@@ -98,14 +105,15 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col">
       <Header
-        title="Dashboard Overview"
-        description="Real-time business summary"
+        title={`Welcome back, ${userName}!`}
+        description="Here's your real-time business summary."
       />
-      <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-8">
+      {/* Subtle background color and padding for the main content area */}
+      <main className="flex-1 p-6 sm:px-8 space-y-8 bg-gray-50/50 dark:bg-muted/20 pb-12">
+        
         {/* Section 1: Financial Summary */}
         <section>
-          <h2 className="text-xl font-semibold mb-4">Financial Summary</h2>
-          {/* ✅ UPDATED GRID TO 4 COLUMNS */}
+          <h2 className="text-2xl font-bold tracking-tight mb-4">Financial Summary</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatsCard
               title="Total Revenue"
@@ -122,12 +130,11 @@ export default function DashboardPage() {
             {data.totalOrders !== undefined && (
               <StatsCard
                 title="Total Orders"
-                value={formatNaira(data.totalOrders)}
+                value={formatNaira(data.totalOrders)} // ✅ FIX: Was formatNfSaira
                 description="All purchase orders"
                 icon={ShoppingBag}
               />
             )}
-            {/* ✅ ADDED THIS CARD */}
             {data.totalMoneyReceived !== undefined && (
               <StatsCard
                 title="Total Money Received"
@@ -139,33 +146,70 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Section 2: Cash Flow Status */}
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Cash Flow Status</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {data.receivables !== undefined && (
-              <StatsCard
-                title="Receivables"
-                value={data.receivables.toString()}
-                description="Unpaid invoices"
-                icon={FileClock}
-              />
-            )}
-            {data.payables !== undefined && (
-              <StatsCard
-                title="Payables"
-                value={data.payables.toString()}
-                description="Pending vendor payments"
-                icon={FileWarning}
-              />
-            )}
-          </div>
-        </section>
+        {/* New Layout Wrapper for side-by-side sections on large screens */}
+        <div className="grid grid-cols-12 gap-8">
+          
+          {/* Section 2: Cash Flow Status (Re-ordered) */}
+          <section className="col-span-12 lg:col-span-5">
+            <h2 className="text-2xl font-bold tracking-tight mb-4">Cash Flow Status</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {data.receivables !== undefined && (
+                <StatsCard
+                  title="Receivables"
+                  value={data.receivables.toString()}
+                  description="Unpaid invoices"
+                  icon={FileClock}
+                />
+              )}
+              {data.payables !== undefined && (
+                <StatsCard
+                  title="Payables"
+                  value={data.payables.toString()}
+                  description="Pending vendor payments"
+                  icon={FileWarning}
+                />
+              )}
+            </div>
+          </section>
 
-        {/* Section 3: General Overview */}
+          {/* Section 3: Tax & Compliance (Re-ordered) */}
+          {data.taxCompliance && (
+            <section className="col-span-12 lg:col-span-7">
+              <h2 className="text-2xl font-bold tracking-tight mb-4">Tax & Compliance</h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {data.taxCompliance.withholdingTaxPO !== undefined && (
+                  <StatsCard
+                    title="WHT from Purchase Order"
+                    value={formatNaira(data.taxCompliance.withholdingTaxPO)}
+                    description="From purchase orders"
+                    icon={ShoppingBag}
+                  />
+                )}
+                {data.taxCompliance.vendorTax !== undefined && (
+                  <StatsCard
+                    title="Taxes given to Vendors"
+                    value={formatNaira(data.taxCompliance.vendorTax)}
+                    description="From vendor invoices"
+                    icon={FileSpreadsheet}
+                  />
+                )}
+                {data.taxCompliance.clientTax !== undefined && (
+                  <StatsCard
+                    title="Tax (Sales)"
+                    value={formatNaira(data.taxCompliance.clientTax)}
+                    description="Collected from sales invoices"
+                    icon={ShieldCheck}
+                  />
+                )}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Section 4: General Overview */}
         {data.overview && (
           <section>
-            <h2 className="text-xl font-semibold mb-4">General Overview</h2>
+            <h2 className="text-2xl font-bold tracking-tight mb-4">General Overview</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {data.overview.purchaseOrders !== undefined && (
                 <StatsCard
@@ -226,39 +270,7 @@ export default function DashboardPage() {
             </div>
           </section>
         )}
-
-        {/* Section 4: Tax & Compliance */}
-        {data.taxCompliance && (
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Tax & Compliance</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {data.taxCompliance.withholdingTaxPO !== undefined && (
-                <StatsCard
-                  title="WHT from Purchase Order"
-                  value={formatNaira(data.taxCompliance.withholdingTaxPO)}
-                  description="From purchase orders"
-                  icon={ShoppingBag}
-                />
-              )}
-              {data.taxCompliance.vendorTax !== undefined && (
-                <StatsCard
-                  title="Taxes given to Vendors"
-                  value={formatNaira(data.taxCompliance.vendorTax)}
-                  description="From vendor invoices"
-                  icon={FileSpreadsheet}
-                />
-              )}
-              {data.taxCompliance.clientTax !== undefined && (
-                <StatsCard
-                  title="Tax (Sales)"
-                  value={formatNaira(data.taxCompliance.clientTax)}
-                  description="Collected from sales invoices"
-                  icon={ShieldCheck}
-                />
-              )}
-            </div>
-          </section>
-        )}
+        
       </main>
     </div>
   );

@@ -3,6 +3,19 @@ import prisma from "@/lib/prisma";
 import admin from "@/lib/firebase-admin";
 import { headers } from "next/headers";
 import { AppUser } from "@/lib/types";
+import { format } from "date-fns"; // Import date-fns
+
+// Helper function to get dates for the last 30 days
+function getLast30Days() {
+  const dates = [];
+  const today = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    dates.push(format(date, "MMM dd")); // Format as 'Oct 24'
+  }
+  return dates;
+}
 
 export async function GET() {
   // --- Firebase Auth Check ---
@@ -47,21 +60,30 @@ export async function GET() {
   };
   const role = roleMap[rawRole] || rawRole.toLowerCase();
 
+  // --- Start Date Range for Chart ---
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  thirtyDaysAgo.setHours(0, 0, 0, 0); // Start of the day
+  // --- End Date Range for Chart ---
+
   try {
     const [
       totalRevenue,
       totalExpenditure,
       totalOrders,
-      totalMoneyReceived, // ✅ ADDED THIS BACK
+      totalMoneyReceived,
       receivables,
       payables,
       overviewCounts,
       taxCompliance,
+      dailyIncome, // ✅ NEW: Daily income for chart
+      dailyExpense, // ✅ NEW: Daily expense for chart
     ] = await Promise.all([
-      prisma.salesInvoice.aggregate({ _sum: { total: true } }), // Total Billed
-      prisma.paymentVoucher.aggregate({ _sum: { amount: true } }), // Total Paid Out
-      prisma.purchaseOrder.aggregate({ _sum: { total: true } }), // Total of all POs
-      prisma.paymentReceipt.aggregate({ _sum: { amount: true } }), // ✅ ADDED THIS QUERY BACK
+      prisma.salesInvoice.aggregate({ _sum: { total: true } }),
+      prisma.paymentVoucher.aggregate({ _sum: { amount: true } }),
+      prisma.purchaseOrder.aggregate({ _sum: { total: true } }),
+      prisma.paymentReceipt.aggregate({ _sum: { amount: true } }),
       prisma.salesInvoice.count({ where: { status: { not: "Paid" } } }),
       prisma.vendorInvoice.count({ where: { status: { not: "Paid" } } }),
       Promise.all([
@@ -79,7 +101,41 @@ export async function GET() {
         prisma.vendorInvoice.aggregate({ _sum: { tax: true } }),
         prisma.salesInvoice.aggregate({ _sum: { tax: true } }),
       ]),
+      // ✅ NEW: Query for daily income
+      prisma.paymentReceipt.groupBy({
+        by: ["paymentDate"],
+        _sum: { amount: true },
+        where: { paymentDate: { gte: thirtyDaysAgo } },
+      }),
+      // ✅ NEW: Query for daily expense
+      prisma.paymentVoucher.groupBy({
+        by: ["paymentDate"],
+        _sum: { amount: true },
+        where: { paymentDate: { gte: thirtyDaysAgo } },
+      }),
     ]);
+
+    // --- Process Chart Data ---
+    const dateLabels = getLast30Days();
+    const incomeMap = new Map(
+      dailyIncome.map((d) => [
+        format(new Date(d.paymentDate), "MMM dd"),
+        d._sum.amount || 0,
+      ])
+    );
+    const expenseMap = new Map(
+      dailyExpense.map((d) => [
+        format(new Date(d.paymentDate), "MMM dd"),
+        d._sum.amount || 0,
+      ])
+    );
+
+    const dailyActivity = dateLabels.map((date) => ({
+      date,
+      Income: incomeMap.get(date) || 0,
+      Expense: expenseMap.get(date) || 0,
+    }));
+    // --- End Process Chart Data ---
 
     const [
       clients,
@@ -98,7 +154,7 @@ export async function GET() {
       revenue: totalRevenue._sum.total || 0,
       expenditure: totalExpenditure._sum.amount || 0,
       totalOrders: totalOrders._sum.total || 0,
-      totalMoneyReceived: totalMoneyReceived._sum.amount || 0, // ✅ ADDED THIS BACK
+      totalMoneyReceived: totalMoneyReceived._sum.amount || 0,
       receivables,
       payables,
       overview: {
@@ -116,6 +172,7 @@ export async function GET() {
         vendorTax: vendorTax._sum.tax || 0,
         clientTax: clientTax._sum.tax || 0,
       },
+      dailyActivity, // ✅ ADDED CHART DATA TO RESPONSE
     };
 
     const filteredData = filterDashboardDataByRole(baseData, role);
@@ -140,10 +197,10 @@ function filterDashboardDataByRole(data: any, role: string) {
     case "admin":
       return clone; // Admin sees everything
     case "accountant":
-      delete clone.overview.users; // Accountant sees all except user count
+      delete clone.overview.users;
       return clone;
     case "project_manager":
-      delete clone.overview.users; // PM sees all except user count
+      delete clone.overview.users;
       return clone;
     case "viewer":
     default:
@@ -152,9 +209,10 @@ function filterDashboardDataByRole(data: any, role: string) {
         revenue: clone.revenue,
         expenditure: clone.expenditure,
         totalOrders: clone.totalOrders,
-        totalMoneyReceived: clone.totalMoneyReceived, // ✅ ADDED THIS BACK
+        totalMoneyReceived: clone.totalMoneyReceived,
         receivables: clone.receivables,
         payables: clone.payables,
+        dailyActivity: clone.dailyActivity, // ✅ Pass chart data to viewer
       };
   }
 }
